@@ -1,0 +1,17 @@
+{
+  "name": "gaztracker-backend",
+  "version": "2.0.0",
+  "description": "GazTracker v4 — bulut: webhook + Socket.io (bitta servis)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  }
+}
