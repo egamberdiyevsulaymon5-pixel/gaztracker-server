@@ -1,0 +1,1617 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>GazTracker v2 — One ID bilan</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<!-- ══ GazTracker v4 · 1-bosqich kutubxonalari ══ -->
+<!-- Telegram WebApp rasmiy SDK (ism, expand, theme) -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<!-- Leaflet.js — bepul OpenStreetMap xaritasi -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<!-- Socket.io mijoz (real-time WSS ulanish) -->
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;font-family:'Inter',sans-serif;background:#ede8ff;overflow:hidden;}
+
+/* LAYOUT */
+.wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;gap:32px;padding:16px;flex-wrap:wrap;}
+.col{display:flex;flex-direction:column;align-items:center;gap:10px;}
+.col-label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#7c5cbf;}
+
+/* PHONE */
+.phone{width:340px;height:700px;border-radius:40px;overflow:hidden;position:relative;
+  box-shadow:0 28px 70px #5533bb45,0 0 0 1.5px rgba(255,255,255,.25) inset;flex-shrink:0;}
+
+/* BG */
+.bg{position:absolute;inset:0;}
+.bg-u{background:linear-gradient(155deg,#7b5de8 0%,#5038c0 45%,#3a2ba8 75%,#6444e0 100%);}
+.bg-d{background:linear-gradient(155deg,#1a1060 0%,#2d1b9a 45%,#3b2daa 75%,#1e1290 100%);}
+.bg-glow{position:absolute;inset:0;background:radial-gradient(ellipse 65% 40% at 65% 18%,#a98aff55,transparent 65%),radial-gradient(ellipse 45% 38% at 18% 82%,#7c5cfa38,transparent 55%);}
+
+/* SCREEN */
+.screen{position:absolute;inset:0;display:none;flex-direction:column;z-index:10;}
+.screen.active{display:flex;}
+
+/* STATUS BAR */
+.sb{display:flex;align-items:center;justify-content:space-between;padding:14px 22px 6px;font-size:11px;font-weight:600;color:rgba(255,255,255,.75);flex-shrink:0;}
+.sb-r{display:flex;gap:5px;}
+
+/* TOP BAR */
+.tb{display:flex;align-items:center;gap:10px;padding:6px 20px 12px;flex-shrink:0;}
+.back{width:30px;height:30px;border-radius:9px;background:rgba(255,255,255,.14);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;color:white;font-size:13px;backdrop-filter:blur(8px);}
+.tb-t{font-size:15px;font-weight:700;color:white;flex:1;}
+.ava{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:15px;color:white;border:1.5px solid rgba(255,255,255,.28);cursor:pointer;}
+
+/* GLASS */
+.g{background:rgba(255,255,255,.16);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.26);border-radius:16px;}
+.gw{background:rgba(255,255,255,.93);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.55);border-radius:16px;}
+
+/* INPUT */
+.lbl{font-size:10px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:.05em;margin-bottom:4px;}
+.inp{width:100%;background:rgba(255,255,255,.14);border:1.5px solid rgba(255,255,255,.2);border-radius:11px;padding:12px 14px;font-size:13px;font-weight:500;color:white;outline:none;font-family:'Inter',sans-serif;transition:.18s;}
+.inp::placeholder{color:rgba(255,255,255,.4);}
+.inp:focus{border-color:rgba(255,255,255,.5);background:rgba(255,255,255,.2);}
+
+/* BUTTONS */
+.btn{width:100%;padding:14px;border-radius:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;transition:.18s;letter-spacing:.01em;}
+.btn-g{background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.3);color:white;backdrop-filter:blur(8px);}
+.btn-g:hover{background:rgba(255,255,255,.26);}
+.btn-s{background:linear-gradient(135deg,#8b6dff,#5f44ee);border:none;color:white;box-shadow:0 5px 18px #5f44ee50;}
+.btn-s:hover{background:linear-gradient(135deg,#9c80ff,#7055ff);}
+.btn-oneid{background:linear-gradient(135deg,#00A94F,#007c3a);border:none;color:white;box-shadow:0 5px 18px #00A94F40;display:flex;align-items:center;justify-content:center;gap:10px;}
+.btn-oneid:hover{background:linear-gradient(135deg,#00bf5a,#009644);}
+.btn-link{background:none;border:none;font-size:12px;font-weight:500;color:rgba(255,255,255,.65);cursor:pointer;font-family:'Inter',sans-serif;}
+.btn-sm{padding:9px 16px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;transition:.18s;border:1.5px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);color:white;}
+
+/* DIVIDER */
+.or-div{display:flex;align-items:center;gap:10px;color:rgba(255,255,255,.35);font-size:11px;font-weight:500;}
+.or-div::before,.or-div::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.15);}
+
+/* ONE ID SCREEN */
+.oneid-logo{width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,#00A94F,#007c3a);display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 8px 24px #00A94F40;}
+.oneid-field{background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.2);border-radius:11px;padding:12px 14px;font-size:13px;color:white;width:100%;}
+
+/* STATUS CHIPS */
+.chip{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;}
+.ch-g{background:rgba(34,197,94,.18);border:1px solid rgba(34,197,94,.4);color:#22c55e;}
+.ch-o{background:rgba(245,166,35,.18);border:1px solid rgba(245,166,35,.4);color:#f5a623;}
+.ch-r{background:rgba(239,68,68,.18);border:1px solid rgba(239,68,68,.4);color:#ef4444;}
+.ch-b{background:rgba(96,165,250,.18);border:1px solid rgba(96,165,250,.4);color:#60a5fa;}
+
+/* MAP */
+.map-box{position:relative;overflow:hidden;border-radius:18px;}
+.map-svg{width:100%;height:100%;}
+.map-bg-f{fill:#e2daf5;}
+.r-maj{stroke:#c8b8ec;stroke-width:6;fill:none;}
+.r-min{stroke:#d5c8f0;stroke-width:2.5;fill:none;}
+.r-dash{stroke:#fff;stroke-width:1.2;fill:none;stroke-dasharray:7,5;opacity:.6;}
+.blk{fill:#dbd0f2;}
+.park{fill:#c8e8c0;}
+.water{fill:#b5d5ee;}
+.m-lbl{font-size:8px;fill:#7a68a8;font-family:'Inter',sans-serif;font-weight:500;}
+
+/* ROUTE + TRUCK (mashina marshrut bo'ylab harakatlanadi) */
+.route-bg{stroke:#b6a4ec;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:5,7;opacity:.55;}
+.route-done{stroke:#7d5cff;stroke-width:3.6;fill:none;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 1px 2px rgba(102,68,238,.55));}
+.route{stroke:#6644ee;stroke-width:2.5;fill:none;stroke-dasharray:7,5;opacity:.65;} /* eski, ba'zi joyda ishlatiladi */
+.ping1{fill:none;stroke:#6644ee;stroke-width:2;animation:pk 2.2s ease-out infinite;}
+.ping2{fill:none;stroke:#6644ee;stroke-width:1.5;animation:pk 2.2s ease-out 1.1s infinite;}
+@keyframes pk{0%{r:8;opacity:.7;}100%{r:24;opacity:0;}}
+.dot-pulse{animation:dpulse 1.4s ease-in-out infinite;}
+@keyframes dpulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.5;transform:scale(1.5);}}
+
+/* Yo'lovchi nuqtasi (o'tib ketilgan / kelgusi) */
+.stop-done circle.s-fill{fill:#22c55e;}
+.stop-next circle.s-fill{fill:#FF5722;}
+
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:.001ms!important;animation-iteration-count:1!important;}
+}
+
+/* DIST CARDS */
+.dc-row{display:flex;gap:8px;}
+.dc{flex:1;padding:11px 12px;border-radius:13px;text-align:center;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.18);}
+.dc-v{font-size:16px;font-weight:800;color:white;line-height:1;}
+.dc-l{font-size:9px;color:rgba(255,255,255,.55);font-weight:500;margin-top:3px;}
+
+/* NAV */
+.nav{position:absolute;bottom:0;left:0;right:0;background:rgba(255,255,255,.08);backdrop-filter:blur(20px);border-top:1px solid rgba(255,255,255,.12);display:flex;padding:10px 0 18px;}
+.ni{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:3px;}
+.ni-i{font-size:19px;}
+.ni-l{font-size:9px;font-weight:600;color:rgba(255,255,255,.5);}
+.ni.on .ni-l{color:white;}
+
+/* SCROLL */
+.scr{overflow-y:auto;flex:1;}
+.scr::-webkit-scrollbar{display:none;}
+
+/* MENU ITEMS */
+.mi{display:flex;align-items:center;gap:12px;padding:13px 16px;border-radius:13px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);cursor:pointer;transition:.14s;color:white;margin-bottom:8px;}
+.mi:hover{background:rgba(255,255,255,.18);}
+.mi-ic{width:34px;height:34px;border-radius:9px;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+.mi-t{font-size:13px;font-weight:600;}
+.mi-a{margin-left:auto;font-size:11px;opacity:.4;}
+
+/* ORDER ROWS */
+.or-row{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:13px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);margin-bottom:7px;}
+.or-n{width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:white;flex-shrink:0;}
+.or-inf{flex:1;}
+.or-nm{font-size:13px;font-weight:700;color:white;}
+.or-ad{font-size:10px;color:rgba(255,255,255,.55);margin-top:1px;}
+
+/* NOTIFICATION ITEMS */
+.notif{display:flex;gap:10px;padding:12px 14px;border-radius:13px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);margin-bottom:8px;}
+.notif-ic{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+.notif-t{font-size:12px;font-weight:700;color:white;margin-bottom:2px;}
+.notif-d{font-size:11px;color:rgba(255,255,255,.55);}
+.notif-time{font-size:10px;color:rgba(255,255,255,.35);margin-top:3px;}
+
+/* DRIVER specific */
+.dr-badge{background:rgba(34,197,94,.2);border:1px solid rgba(34,197,94,.4);border-radius:20px;padding:4px 11px;font-size:10px;font-weight:700;color:#22c55e;display:flex;align-items:center;gap:5px;}
+.dr-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:#22c55e;animation:dpulse 1.5s infinite;}
+
+/* TOAST */
+.toast{position:absolute;bottom:85px;left:16px;right:16px;z-index:60;background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.4);border-radius:13px;padding:11px 14px;display:flex;align-items:center;gap:9px;backdrop-filter:blur(12px);animation:tin .3s ease;}
+@keyframes tin{from{transform:translateY(18px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+.toast span{font-size:12px;font-weight:600;color:#22c55e;}
+
+/* OTP */
+.otp-row{display:flex;gap:10px;justify-content:center;}
+.otp-box{width:60px;height:62px;border-radius:14px;background:rgba(255,255,255,.18);border:2px solid rgba(255,255,255,.28);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:white;cursor:pointer;transition:.15s;}
+
+/* PROGRESS BAR */
+.prog-bar{height:5px;background:rgba(255,255,255,.15);border-radius:3px;overflow:hidden;margin-top:6px;}
+.prog-fill{height:100%;border-radius:3px;background:#22c55e;}
+
+/* DRIVER NAVIGATION */
+.nav-banner{display:flex;align-items:center;gap:12px;margin:0 14px 8px;padding:12px 14px;border-radius:15px;background:linear-gradient(135deg,rgba(125,92,255,.4),rgba(74,58,170,.3));border:1px solid rgba(255,255,255,.24);flex-shrink:0;}
+.nav-arrow{width:44px;height:44px;border-radius:13px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;}
+.sheet{margin:0 14px 14px;padding:14px;border-radius:18px;background:rgba(255,255,255,.14);border:1.5px solid rgba(255,255,255,.24);flex-shrink:0;}
+.wk-bar{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;}
+.wk-track{width:13px;height:64px;border-radius:7px;background:rgba(255,255,255,.1);display:flex;align-items:flex-end;overflow:hidden;}
+.wk-fill{width:100%;border-radius:7px;background:linear-gradient(180deg,#9c80ff,#5f44ee);}
+.wk-d{font-size:9px;color:rgba(255,255,255,.45);font-weight:600;}
+.star{color:#f5a623;}
+.d-act{display:flex;gap:8px;}
+.d-act .btn{flex:1;}
+
+/* DEMO PANEL */
+.demo-panel{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:5px;z-index:999;background:white;border-radius:22px;padding:7px 9px;box-shadow:0 6px 24px #5533bb30;max-width:720px;}
+.dp-row{display:flex;gap:5px;flex-wrap:wrap;justify-content:center;align-items:center;}
+.dp-btn{padding:7px 14px;border-radius:22px;border:none;font-size:11px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;transition:.16s;color:#7c5cbf;background:transparent;}
+.dp-btn.on{background:linear-gradient(135deg,#6b4de6,#4a3aaa);color:white;}
+
+/* ═══ V4: QR / SMART ID / TO'LOV / NAVBAT / BALANS ═══ */
+
+/* QR kod kartasi (oq, mijoz haydovchiga ko'rsatadi) */
+.qr-card{background:#fff;border-radius:20px;padding:18px;box-shadow:0 12px 34px rgba(40,20,90,.28);}
+.qr-svg{width:172px;height:172px;display:block;margin:0 auto;}
+.qr-svg rect.q{fill:#26145e;}
+.qr-name{font-size:14px;font-weight:800;color:#2a1a5e;text-align:center;}
+.qr-id{font-size:11px;font-weight:600;color:#8b7bb5;text-align:center;letter-spacing:.04em;}
+
+/* OTP zaxira kod (jonli yangilanadi) */
+.otp-fallback{display:flex;align-items:center;gap:11px;background:rgba(255,255,255,.14);border:1.5px dashed rgba(255,255,255,.32);border-radius:14px;padding:12px 14px;}
+.otp-digits{display:flex;gap:5px;}
+.otp-d{width:26px;height:34px;border-radius:7px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:#fff;font-variant-numeric:tabular-nums;}
+.otp-ring{position:relative;width:34px;height:34px;flex-shrink:0;}
+.otp-ring svg{transform:rotate(-90deg);}
+.otp-ring .ot-bg{fill:none;stroke:rgba(255,255,255,.18);stroke-width:3.5;}
+.otp-ring .ot-fg{fill:none;stroke:#7dd3a8;stroke-width:3.5;stroke-linecap:round;stroke-dasharray:88;animation:otpc 60s linear infinite;}
+@keyframes otpc{from{stroke-dashoffset:0;}to{stroke-dashoffset:88;}}
+.otp-ring .ot-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;}
+
+/* Smart-ID plastik karta (keksalar uchun) */
+.smartcard{position:relative;border-radius:17px;padding:16px 17px;color:#fff;overflow:hidden;
+  background:linear-gradient(125deg,#3b2daa 0%,#6444e0 55%,#8b6dff 100%);
+  box-shadow:0 12px 30px rgba(60,40,170,.42);border:1px solid rgba(255,255,255,.2);}
+.smartcard::after{content:'';position:absolute;width:150px;height:150px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,255,255,.22),transparent 70%);top:-60px;right:-40px;}
+.sc-chip{width:34px;height:26px;border-radius:6px;background:linear-gradient(135deg,#f4d77a,#caa23c);position:relative;}
+.sc-chip::before{content:'';position:absolute;inset:5px 8px;border:1px solid rgba(120,80,10,.45);border-radius:2px;}
+.barcode{height:34px;width:100%;border-radius:5px;background:#fff;
+  background-image:repeating-linear-gradient(90deg,#11102a 0,#11102a 2px,transparent 2px,transparent 4px,#11102a 4px,#11102a 5px,transparent 5px,transparent 9px,#11102a 9px,#11102a 12px,transparent 12px,transparent 14px);
+  background-size:14px 100%;background-repeat:repeat-x;}
+
+/* To'lov brendlari (Click / Payme / Uzum) */
+.pay-row{display:flex;gap:8px;}
+.pay-btn{flex:1;border:none;border-radius:13px;padding:13px 8px;cursor:pointer;font-family:'Inter',sans-serif;
+  font-size:12px;font-weight:800;color:#fff;display:flex;flex-direction:column;align-items:center;gap:6px;transition:.15s;}
+.pay-btn:hover{filter:brightness(1.08);transform:translateY(-1px);}
+.pay-btn .pay-ic{width:30px;height:30px;border-radius:9px;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;}
+.pay-click{background:linear-gradient(135deg,#1a8fff,#0066d6);}
+.pay-payme{background:linear-gradient(135deg,#33d6c8,#13a9c0);}
+.pay-uzum{background:linear-gradient(135deg,#8b5cf6,#6a28e0);}
+
+/* Balans / kvota kartalari */
+.bal-hero{display:flex;align-items:center;justify-content:space-between;padding:16px;border-radius:16px;
+  background:linear-gradient(135deg,rgba(34,197,94,.22),rgba(22,140,80,.14));border:1px solid rgba(34,197,94,.32);}
+.kvota-card{background:rgba(0,169,79,.13);border:1.5px solid rgba(0,169,79,.34);border-radius:14px;padding:13px 14px;}
+
+/* Navbat / geofencing */
+.queue-card{display:flex;align-items:center;gap:13px;padding:13px 14px;border-radius:15px;
+  background:linear-gradient(135deg,rgba(255,87,34,.2),rgba(255,87,34,.08));border:1px solid rgba(255,87,34,.34);}
+.queue-num{width:46px;height:46px;border-radius:13px;background:#FF5722;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 5px 16px rgba(255,87,34,.4);}
+.queue-num b{font-size:18px;font-weight:900;color:#fff;line-height:1;}
+.queue-num span{font-size:7px;font-weight:700;color:rgba(255,255,255,.85);letter-spacing:.05em;}
+.geo-alert{display:flex;align-items:center;gap:11px;margin:0 14px 8px;padding:12px 14px;border-radius:15px;flex-shrink:0;
+  background:linear-gradient(135deg,rgba(255,87,34,.34),rgba(255,87,34,.16));border:1.5px solid rgba(255,87,34,.5);
+  animation:geopulse 2.4s ease-in-out infinite;}
+@keyframes geopulse{0%,100%{box-shadow:0 0 0 0 rgba(255,87,34,0);}50%{box-shadow:0 0 0 6px rgba(255,87,34,.12);}}
+
+/* Haydovchi: donabay balans */
+.cyl-bal{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:15px;
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);}
+.cyl-ring{position:relative;width:52px;height:52px;flex-shrink:0;}
+.cyl-ring svg{transform:rotate(-90deg);}
+.cyl-ring .cb-bg{fill:none;stroke:rgba(255,255,255,.14);stroke-width:5;}
+.cyl-ring .cb-fg{fill:none;stroke:#22c55e;stroke-width:5;stroke-linecap:round;transition:stroke-dashoffset .6s ease;}
+.cyl-ring .cb-n{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;color:#fff;}
+
+/* Offline / SOS */
+.offline-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:10px;font-weight:700;
+  background:rgba(245,166,35,.2);border:1px solid rgba(245,166,35,.42);color:#f5a623;}
+.sos-btn{width:100%;padding:13px;border-radius:13px;border:1.5px solid rgba(239,68,68,.5);background:rgba(239,68,68,.14);
+  color:#f87171;font-size:13px;font-weight:800;font-family:'Inter',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:.15s;}
+.sos-btn:hover{background:rgba(239,68,68,.24);}
+
+/* Skaner ramkasi (haydovchi) */
+.scan-frame{position:relative;width:188px;height:188px;margin:0 auto;border-radius:22px;
+  background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.18);overflow:hidden;}
+.scan-frame .corner{position:absolute;width:30px;height:30px;border:3px solid #22c55e;}
+.scan-frame .c-tl{top:12px;left:12px;border-right:none;border-bottom:none;border-radius:10px 0 0 0;}
+.scan-frame .c-tr{top:12px;right:12px;border-left:none;border-bottom:none;border-radius:0 10px 0 0;}
+.scan-frame .c-bl{bottom:12px;left:12px;border-right:none;border-top:none;border-radius:0 0 0 10px;}
+.scan-frame .c-br{bottom:12px;right:12px;border-left:none;border-top:none;border-radius:0 0 10px 0;}
+.scan-line{position:absolute;left:14px;right:14px;height:2.5px;border-radius:3px;background:linear-gradient(90deg,transparent,#22c55e,transparent);
+  box-shadow:0 0 12px #22c55e;top:14px;animation:scanmove 2.2s ease-in-out infinite;}
+@keyframes scanmove{0%,100%{top:16px;}50%{top:168px;}}
+.otp-key{aspect-ratio:1;border-radius:13px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);
+  display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;cursor:pointer;font-family:'Inter',sans-serif;transition:.12s;}
+.otp-key:hover{background:rgba(255,255,255,.22);}
+.otp-input-box{width:46px;height:56px;border-radius:12px;background:rgba(255,255,255,.16);border:2px solid rgba(255,255,255,.26);
+  display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900;color:#fff;font-variant-numeric:tabular-nums;}
+.otp-input-box.fill{border-color:#22c55e;background:rgba(34,197,94,.18);}
+
+/* segment toggle */
+.seg{display:flex;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:3px;gap:3px;}
+.seg button{flex:1;border:none;background:transparent;color:rgba(255,255,255,.6);font-family:'Inter',sans-serif;
+  font-size:12px;font-weight:700;padding:9px;border-radius:9px;cursor:pointer;transition:.15s;}
+.seg button.on{background:rgba(255,255,255,.9);color:#4a3aaa;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ════ FOYDALANUVCHI ILOVASI ════ -->
+<div class="col">
+  <div class="col-label">👤 Foydalanuvchi ilovasi</div>
+  <div class="phone" id="uPhone">
+    <div class="bg bg-u"></div><div class="bg-glow"></div>
+
+    <!-- ── 1. KIRISH EKRANI ── -->
+    <div class="screen active" id="u-login">
+      <div class="sb"><span>9:41</span><div class="sb-r"><span>📶</span><span>🔋</span></div></div>
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 26px;gap:0;">
+        <div style="align-self:center;margin-bottom:24px;text-align:center;">
+          <div style="width:64px;height:64px;border-radius:20px;background:rgba(255,255,255,.18);border:2px solid rgba(255,255,255,.28);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 10px;">⛽</div>
+          <div style="font-size:20px;font-weight:900;color:white;">GazTracker</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.55);margin-top:2px;">Gaz mashinasi qayerda?</div>
+        </div>
+
+        <!-- ONE ID BIG BUTTON -->
+        <button class="btn btn-oneid" onclick="goU('u-oneid')" style="margin-bottom:14px;padding:15px;">
+          <span style="font-size:20px;">🇺🇿</span>
+          <div style="text-align:left;">
+            <div style="font-size:14px;font-weight:800;">One ID orqali kirish</div>
+            <div style="font-size:10px;opacity:.8;font-weight:500;">Hukumat tizimi · Xavfsiz</div>
+          </div>
+          <span style="margin-left:auto;opacity:.7;">›</span>
+        </button>
+
+        <div class="or-div">yoki</div>
+
+        <div style="margin-top:14px;margin-bottom:10px;">
+          <div class="lbl">TELEFON RAQAM</div>
+          <input class="inp" type="tel" placeholder="+998 90 123 45 67" id="u-phone-inp">
+        </div>
+        <div style="margin-bottom:8px;">
+          <div class="lbl">PAROL</div>
+          <div style="position:relative;">
+            <input class="inp" type="password" placeholder="••••••••" style="padding-right:42px;">
+            <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:15px;cursor:pointer;opacity:.5;">👁</span>
+          </div>
+        </div>
+        <div style="text-align:right;margin-bottom:18px;">
+          <button class="btn-link">Parolni unutdim?</button>
+        </div>
+        <button class="btn btn-g" onclick="goU('u-home')">Kirish</button>
+        <div style="text-align:center;margin-top:12px;">
+          <button class="btn-link" onclick="goU('u-register')">Hisob yo'qmi? <strong style="color:white;">Ro'yxatdan o'tish</strong></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 2. ONE ID EKRANI ── -->
+    <div class="screen" id="u-oneid">
+      <div class="sb"><span>9:41</span><div class="sb-r"><span>📶</span><span>🔋</span></div></div>
+      <div class="tb">
+        <button class="back" onclick="goU('u-login')">←</button>
+        <div class="tb-t">One ID tizimi</div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;padding:0 26px;gap:16px;">
+        <!-- OneID logo card -->
+        <div class="g" style="width:100%;padding:20px;text-align:center;">
+          <div class="oneid-logo" style="margin:0 auto 12px;">🇺🇿</div>
+          <div style="font-size:16px;font-weight:800;color:white;">Yagona Identifikatsiya</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:4px;">id.egov.uz — Davlat tizimi</div>
+        </div>
+
+        <div style="width:100%;">
+          <div class="lbl">LOGIN (JSHSHIR yoki pasport seriya)</div>
+          <input class="inp" type="text" placeholder="12345678901234" id="oneid-login">
+        </div>
+        <div style="width:100%;">
+          <div class="lbl">PAROL</div>
+          <input class="inp" type="password" placeholder="••••••••">
+        </div>
+
+        <!-- Auth methods -->
+        <div style="width:100%;display:flex;gap:8px;">
+          <button class="btn-sm" style="flex:1;" onclick="goU('u-oneid-biometric')">🤳 MyID</button>
+          <button class="btn-sm" style="flex:1;">🔑 ERI imzo</button>
+          <button class="btn-sm" style="flex:1;" onclick="goU('u-otp')">📱 SMS</button>
+        </div>
+
+        <button class="btn btn-oneid" style="width:100%;" onclick="goU('u-otp')">
+          <span style="font-size:16px;">✅</span> Kirish
+        </button>
+
+        <div style="text-align:center;width:100%;">
+          <div style="font-size:10px;color:rgba(255,255,255,.4);line-height:1.5;">
+            🔒 Ma'lumotlaringiz One ID tizimi orqali himoyalangan.<br>
+            Shaxsiy ma'lumotlar GazTracker'ga <strong style="color:rgba(255,255,255,.65);">faqat roziligingiz bilan</strong> uzatiladi.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 3. BIOMETRIC / MYID ── -->
+    <div class="screen" id="u-oneid-biometric">
+      <div class="sb"><span>9:41</span><div class="sb-r"><span>📶</span><span>🔋</span></div></div>
+      <div class="tb">
+        <button class="back" onclick="goU('u-oneid')">←</button>
+        <div class="tb-t">MyID tasdiqlash</div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 26px;gap:20px;text-align:center;">
+        <div style="width:110px;height:110px;border-radius:50%;background:rgba(255,255,255,.12);border:3px solid rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:48px;position:relative;">
+          🤳
+          <div style="position:absolute;inset:-8px;border-radius:50%;border:2px solid rgba(34,197,94,.4);animation:dpulse 1.8s infinite;"></div>
+        </div>
+        <div>
+          <div style="font-size:16px;font-weight:800;color:white;margin-bottom:6px;">Yuzni skanerlang</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.55);">Kameraga to'g'ri qarang.<br>Bu jarayon avtomatik bo'ladi.</div>
+        </div>
+        <div class="g" style="width:100%;padding:14px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:20px;">ℹ️</span>
+          <div style="font-size:11px;color:rgba(255,255,255,.7);text-align:left;">MyID — O'zbekiston raqamli hukumati biometrik identifikatsiya tizimi</div>
+        </div>
+        <button class="btn btn-oneid" style="width:100%;" onclick="goU('u-home')">✓ Tasdiqlash muvaffaqiyatli</button>
+        <button class="btn-link" onclick="goU('u-otp')">SMS kod bilan davom etish</button>
+      </div>
+    </div>
+
+    <!-- ── 4. OTP ── -->
+    <div class="screen" id="u-otp">
+      <div class="sb"><span>9:41</span><div class="sb-r"><span>📶</span><span>🔋</span></div></div>
+      <div class="tb">
+        <button class="back" onclick="goU('u-oneid')">←</button>
+        <div class="tb-t">SMS tasdiqlash</div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 26px;gap:20px;text-align:center;">
+        <div style="font-size:44px;margin-bottom:4px;">📱</div>
+        <div>
+          <div style="font-size:15px;font-weight:700;color:white;">Telefon raqamingizga SMS yuborildi</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.55);margin-top:5px;">+998 90 ••• •• 67 ga 6 xonali kod</div>
+        </div>
+        <div class="otp-row">
+          <div class="otp-box">3</div>
+          <div class="otp-box">7</div>
+          <div class="otp-box">1</div>
+          <div class="otp-box">_</div>
+        </div>
+        <button class="btn btn-g" style="width:100%;" onclick="goU('u-register-confirm')">Tasdiqlash</button>
+        <button class="btn-link">Qayta yuborish <strong style="color:white;">1:45</strong></button>
+      </div>
+    </div>
+
+    <!-- ── 5. REGISTER CONFIRM (One ID dan keyin) ── -->
+    <div class="screen" id="u-register-confirm">
+      <div class="sb"><span>9:41</span><div class="sb-r"><span>📶</span><span>🔋</span></div></div>
+      <div class="tb">
+        <div class="tb-t">Ma'lumotlarni tasdiqlang</div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;padding:0 22px 20px;gap:10px;">
+        <!-- Data from OneID -->
+        <div class="g" style="padding:16px;">
+          <div style="font-size:10px;font-weight:700;color:rgba(34,197,94,.9);letter-spacing:.05em;margin-bottom:10px;display:flex;align-items:center;gap:6px;">
+            <span style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;"></span>
+            ONE ID DAN OLINGAN MA'LUMOTLAR
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:11px;color:rgba(255,255,255,.55);">To'liq ism</span>
+              <span style="font-size:13px;font-weight:700;color:white;">Karimov Sherzod</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:11px;color:rgba(255,255,255,.55);">JSHSHIR</span>
+              <span style="font-size:13px;font-weight:700;color:white;">30507••••••••</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:11px;color:rgba(255,255,255,.55);">Telefon</span>
+              <span style="font-size:13px;font-weight:700;color:white;">+998 90 123 45 67</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:11px;color:rgba(255,255,255,.55);">Manzil</span>
+              <span style="font-size:12px;font-weight:600;color:rgba(255,255,255,.8);">Xo'jaeli tum.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- User fills only this -->
+        <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:.05em;padding:2px 0;">FAQAT QUYIDAGINI TO'LDIRING:</div>
+        <div>
+          <div class="lbl">MAHALLA</div>
+          <select class="inp" style="appearance:none;">
+            <option>Navro'z mahallasi</option>
+            <option>Yangi hayot</option>
+            <option>Uchtepa</option>
+            <option>Markaziy</option>
+          </select>
+        </div>
+        <div>
+          <div class="lbl">UY MANZILI (ko'cha, uy raqami)</div>
+          <input class="inp" type="text" placeholder="Mustaqillik ko'cha, 14-uy">
+        </div>
+        <button class="btn btn-s" onclick="goU('u-home')" style="margin-top:6px;">✓ Tasdiqlash va boshlash</button>
+        <div style="font-size:10px;color:rgba(255,255,255,.35);text-align:center;line-height:1.5;">
+          Davom etish orqali <u>foydalanish shartlari</u>ga rozilik bildirasiz
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 6. HOME / MAP ── -->
+    <div class="screen" id="u-home">
+      <div class="sb"><span>9:41</span><div class="sb-r"><span>📶</span><span>🔋</span></div></div>
+      <div style="padding:4px 18px 8px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+        <div>
+          <div style="font-size:11px;color:rgba(255,255,255,.55);font-weight:500;">Salom,</div>
+          <div style="font-size:15px;font-weight:800;color:white;" id="u-userName">Karimov Sherzod 👋</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <div style="position:relative;cursor:pointer;" onclick="goU('u-notif')">
+            <div style="font-size:22px;">🔔</div>
+            <div style="position:absolute;top:-2px;right:-2px;width:8px;height:8px;border-radius:50%;background:#ef4444;border:1.5px solid #5038c0;"></div>
+          </div>
+          <button class="ava" onclick="goU('u-menu')">👤</button>
+        </div>
+      </div>
+      <!-- Zone -->
+      <div style="padding:0 18px 8px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:11px;color:rgba(255,255,255,.65);">📍 Navro'z mahallasi · Xo'jaeli</div>
+        <div class="chip ch-g">🚛 Harakatda</div>
+      </div>
+
+      <!-- MAP -->
+      <div class="map-box g" style="margin:0 14px;height:228px;flex-shrink:0;">
+        <!-- ══ JONLI XARITA (Leaflet) — eski SVG simulyatsiya o'rniga ══ -->
+        <div id="liveMap" style="width:100%;height:100%;border-radius:18px;z-index:1;"></div>
+      </div>
+
+      <!-- pastki qism: skroll -->
+      <div class="scr" style="padding:8px 14px 78px;">
+
+        <!-- GEOFENCING jonli ogohlantirish -->
+        <div class="geo-alert" style="margin:0 0 10px;">
+          <span style="font-size:22px;">🚛</span>
+          <div style="flex:1;">
+            <div style="font-size:12px;font-weight:800;color:white;">Mashina 350 m yaqinida!</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.75);">Bo'sh 50 L baloningizni olib ko'chaga chiqing</div>
+          </div>
+          <div style="font-size:18px;font-weight:900;color:#fff;line-height:1;">~3<span style="font-size:9px;font-weight:600;"> daq</span></div>
+        </div>
+
+        <!-- Dist cards -->
+        <div class="dc-row" style="margin-bottom:10px;">
+          <div class="dc"><div class="dc-v">350 m</div><div class="dc-l">Masofa</div></div>
+          <div class="dc"><div class="dc-v">~3 daq</div><div class="dc-l">Yetib keladi</div></div>
+          <div class="dc"><div class="dc-v">15-chi</div><div class="dc-l">Navbatingiz</div></div>
+          <div class="dc"><div class="dc-v">1 dona</div><div class="dc-l">Bo'sh balon</div></div>
+        </div>
+
+        <!-- AQLLI NAVBAT -->
+        <div class="queue-card" style="margin-bottom:10px;">
+          <div class="queue-num"><b>15</b><span>XONADON</span></div>
+          <div style="flex:1;">
+            <div style="font-size:12px;font-weight:800;color:white;">Siz bugungi rejada 15-xonadonsiz</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.7);margin-top:2px;">Oldingizda 2 ta manzil qoldi · 100 ta balon bortda</div>
+            <div class="prog-bar" style="margin-top:7px;"><div class="prog-fill" style="width:87%;background:#FF5722;"></div></div>
+          </div>
+        </div>
+
+        <!-- TEZKOR AMALLAR: QR + Karta -->
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <button class="btn btn-g" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;" onclick="goU('u-qr')">
+            <span style="font-size:17px;">📲</span> QR-kodim
+          </button>
+          <button class="btn btn-g" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;" onclick="goU('u-card')">
+            <span style="font-size:17px;">💳</span> Karta · 2 dona
+          </button>
+        </div>
+
+        <!-- Info card -->
+        <div class="g" style="padding:13px 14px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="font-size:20px;">🚛</span>
+            <div style="flex:1;">
+              <div style="font-size:12px;font-weight:700;color:white;">UZ-01 · Abdullayev Hamid</div>
+              <div style="font-size:10px;color:rgba(255,255,255,.55);">Navro'z mahallasi marshrutida</div>
+            </div>
+            <a href="tel:" style="width:32px;height:32px;border-radius:9px;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:15px;">📞</a>
+          </div>
+          <button class="btn btn-g" style="padding:11px;font-size:12px;" onclick="showToast()">🔔 Yaqinlashganda yana eslat (500m)</button>
+        </div>
+      </div>
+
+      <div class="toast" id="ut" style="display:none;"><span>✅</span><span>Mashina 500m yaqinlashganda SMS va push-xabar yuboriladi!</span></div>
+      <div class="nav">
+        <div class="ni on"><div class="ni-i">🗺️</div><div class="ni-l">Xarita</div></div>
+        <div class="ni" onclick="goU('u-history')"><div class="ni-i">📋</div><div class="ni-l">Tarix</div></div>
+        <div class="ni" onclick="goU('u-notif')"><div class="ni-i">🔔</div><div class="ni-l">Xabarnoma</div></div>
+        <div class="ni" onclick="goU('u-menu')"><div class="ni-i">☰</div><div class="ni-l">Menyu</div></div>
+      </div>
+    </div>
+
+    <!-- ── 7. HISTORY ── -->
+    <div class="screen" id="u-history">
+      <div class="sb"><span>9:41</span><div class="sb-r"><span>📶</span><span>🔋</span></div></div>
+      <div class="tb"><button class="back" onclick="goU('u-home')">←</button><div class="tb-t">To'lov tarixi</div></div>
+      <div class="scr" style="padding:0 16px 80px;display:flex;flex-direction:column;gap:8px;">
+        <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.45);letter-spacing:.05em;padding:3px 0;">BU OY — IYUN 2026</div>
+        <div class="g" style="padding:13px 14px;display:flex;align-items:center;gap:11px;">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(34,197,94,.2);display:flex;align-items:center;justify-content:center;font-size:17px;">⛽</div>
+          <div style="flex:1;"><div style="font-size:12px;font-weight:700;color:white;">50 kg gaz · 1 ta balloon</div><div style="font-size:10px;color:rgba(255,255,255,.5);">10 iyun · UZ-01</div></div>
+          <div style="text-align:right;"><div style="font-size:13px;font-weight:800;color:white;">75 000</div><div style="font-size:9px;color:#22c55e;font-weight:600;">✓ To'landi</div></div>
+        </div>
+        <div class="g" style="padding:13px 14px;display:flex;align-items:center;gap:11px;">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(245,166,35,.2);display:flex;align-items:center;justify-content:center;font-size:17px;">⏳</div>
+          <div style="flex:1;"><div style="font-size:12px;font-weight:700;color:white;">50 kg gaz · Navbatda</div><div style="font-size:10px;color:rgba(255,255,255,.5);">Bugun · Kelayapti</div></div>
+          <div style="text-align:right;"><div style="font-size:13px;font-weight:800;color:white;">75 000</div><div style="font-size:9px;color:#f5a623;font-weight:600;">⏳ Kutilmoqda</div></div>
+        </div>
+        <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.45);letter-spacing:.05em;padding:8px 0 3px;">MAY 2026</div>
+        <div class="g" style="padding:13px 14px;display:flex;align-items:center;gap:11px;">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(34,197,94,.2);display:flex;align-items:center;justify-content:center;font-size:17px;">⛽</div>
+          <div style="flex:1;"><div style="font-size:12px;font-weight:700;color:white;">100 kg gaz · 2 ta balloon</div><div style="font-size:10px;color:rgba(255,255,255,.5);">28 may · UZ-02</div></div>
+          <div style="text-align:right;"><div style="font-size:13px;font-weight:800;color:white;">145 000</div><div style="font-size:9px;color:#22c55e;font-weight:600;">✓ To'landi</div></div>
+        </div>
+        <div class="g" style="padding:13px 14px;display:flex;align-items:center;gap:11px;">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(34,197,94,.2);display:flex;align-items:center;justify-content:center;font-size:17px;">⛽</div>
+          <div style="flex:1;"><div style="font-size:12px;font-weight:700;color:white;">50 kg gaz · 1 ta balloon</div><div style="font-size:10px;color:rgba(255,255,255,.5);">15 may · UZ-01</div></div>
+          <div style="text-align:right;"><div style="font-size:13px;font-weight:800;color:white;">75 000</div><div style="font-size:9px;color:#22c55e;font-weight:600;">✓ To'landi</div></div>
+        </div>
+        <!-- Summary -->
+        <div class="g" style="padding:14px;margin-top:4px;">
+          <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:.05em;margin-bottom:10px;">UMUMIY STATISTIKA</div>
+          <div style="display:flex;gap:8px;">
+            <div class="dc" style="flex:1;"><div class="dc-v">275 kg</div><div class="dc-l">Jami olingan</div></div>
+            <div class="dc" style="flex:1;"><div class="dc-v">4 marta</div><div class="dc-l">Xizmat</div></div>
+            <div class="dc" style="flex:1;"><div class="dc-v">370 000</div><div class="dc-l">So'm jami</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="nav">
+        <div class="ni" onclick="goU('u-home')"><div class="ni-i">🗺️</div><div class="ni-l">Xarita</div></div>
+        <div class="ni on"><div class="ni-i">📋</div><div class="ni-l">Tarix</div></div>
+        <div class="ni" onclick="goU('u-notif')"><div class="ni-i">🔔</div><div class="ni-l">Xabarnoma</div></div>
+        <div class="ni" onclick="goU('u-menu')"><div class="ni-i">☰</div><div class="ni-l">Menyu</div></div>
+      </div>
+    </div>
+
+    <!-- ── 8. NOTIFICATIONS ── -->
+    <div class="screen" id="u-notif">
+      <div class="sb"><span>9:41</span><div class="sb-r"><span>📶</span><span>🔋</span></div></div>
+      <div class="tb"><button class="back" onclick="goU('u-home')">←</button><div class="tb-t">Xabarnomalar</div></div>
+      <div class="scr" style="padding:0 16px 80px;">
+        <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.45);letter-spacing:.05em;padding:3px 0 8px;">YANGI</div>
+        <div class="notif">
+          <div class="notif-ic" style="background:rgba(255,87,34,.2);">🚛</div>
+          <div><div class="notif-t">Mashina 1 km yaqinida!</div><div class="notif-d">UZ-01 siz tomon kelmoqda.<br>Taxminan 10 daqiqada.</div><div class="notif-time">Hozirgina</div></div>
+        </div>
+        <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.45);letter-spacing:.05em;padding:8px 0;">BUGUN</div>
+        <div class="notif">
+          <div class="notif-ic" style="background:rgba(34,197,94,.2);">✅</div>
+          <div><div class="notif-t">Yetkazib berildi</div><div class="notif-d">50 kg gaz muvaffaqiyatli yetkazildi.<br>To'lov: 75 000 so'm.</div><div class="notif-time">2 kun oldin · 11:30</div></div>
+        </div>
+        <div class="notif">
+          <div class="notif-ic" style="background:rgba(96,165,250,.2);">📅</div>
+          <div><div class="notif-t">Keyingi kun eslatmasi</div><div class="notif-d">Ertaga ushbu mahallaga mashina<br>chiqadi. Buyurtma bering!</div><div class="notif-time">Kecha · 20:00</div></div>
+        </div>
+        <div class="notif">
+          <div class="notif-ic" style="background:rgba(245,166,35,.2);">⚠️</div>
+          <div><div class="notif-t">Sig'im kam</div><div class="notif-d">UZ-02 bugun oxirgi 2 manzilga<br>yetkazib bera oladi.</div><div class="notif-time">2 soat oldin</div></div>
+        </div>
+      </div>
+      <div class="nav">
+        <div class="ni" onclick="goU('u-home')"><div class="ni-i">🗺️</div><div class="ni-l">Xarita</div></div>
+        <div class="ni" onclick="goU('u-history')"><div class="ni-i">📋</div><div class="ni-l">Tarix</div></div>
+        <div class="ni on"><div class="ni-i">🔔</div><div class="ni-l">Xabarnoma</div></div>
+        <div class="ni" onclick="goU('u-menu')"><div class="ni-i">☰</div><div class="ni-l">Menyu</div></div>
+      </div>
+    </div>
+
+    <!-- ── 9. MENU ── -->
+    <div class="screen" id="u-menu">
+      <div class="sb"><span>9:41</span><div class="sb-r"><span>📶</span><span>🔋</span></div></div>
+      <div style="padding:10px 20px 16px;display:flex;align-items:center;gap:13px;flex-shrink:0;">
+        <div style="width:50px;height:50px;border-radius:14px;background:rgba(255,255,255,.18);border:2px solid rgba(255,255,255,.28);display:flex;align-items:center;justify-content:center;font-size:22px;">👤</div>
+        <div>
+          <div style="font-size:15px;font-weight:800;color:white;" id="u-userNameProfile">Karimov Sherzod</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.55);">+998 90 123 45 67</div>
+          <div style="display:flex;align-items:center;gap:5px;margin-top:3px;"><span style="font-size:9px;padding:2px 7px;background:rgba(0,169,79,.2);border:1px solid rgba(0,169,79,.4);border-radius:10px;color:#00A94F;font-weight:700;">✓ One ID</span></div>
+        </div>
+      </div>
+      <div class="scr" style="padding:0 16px 20px;">
+        <div class="mi" onclick="goU('u-home')"><div class="mi-ic">🗺️</div><div class="mi-t">Xarita</div><div class="mi-a">›</div></div>
+        <div class="mi" onclick="goU('u-qr')"><div class="mi-ic">📲</div><div class="mi-t">QR-kod / Smart-ID</div><div class="mi-a">›</div></div>
+        <div class="mi" onclick="goU('u-card')"><div class="mi-ic">💳</div><div class="mi-t">Gaz kartasi · 2 dona</div><div class="mi-a">›</div></div>
+        <div class="mi"><div class="mi-ic">🔔</div><div class="mi-t">Bildirishnomalar</div><div class="mi-a">›</div></div>
+        <div class="mi"><div class="mi-ic">📊</div><div class="mi-t">Statistika</div><div class="mi-a">›</div></div>
+        <div class="mi"><div class="mi-ic">👨‍👩‍👧‍👦</div><div class="mi-t">Oilaviy foydalanish</div><div class="mi-a">›</div></div>
+        <div class="mi"><div class="mi-ic">📞</div><div class="mi-t">Qo'llab-quvvatlash</div><div class="mi-a">›</div></div>
+        <div class="mi"><div class="mi-ic">⚙️</div><div class="mi-t">Sozlamalar</div><div class="mi-a">›</div></div>
+        <div class="mi" style="border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.08);" onclick="goU('u-login')">
+          <div class="mi-ic" style="background:rgba(239,68,68,.18);">🚪</div>
+          <div class="mi-t" style="color:#f87171;">Chiqish</div>
+        </div>
+      </div>
+      <div class="nav">
+        <div class="ni" onclick="goU('u-home')"><div class="ni-i">🗺️</div><div class="ni-l">Xarita</div></div>
+        <div class="ni" onclick="goU('u-history')"><div class="ni-i">📋</div><div class="ni-l">Tarix</div></div>
+        <div class="ni" onclick="goU('u-notif')"><div class="ni-i">🔔</div><div class="ni-l">Xabarnoma</div></div>
+        <div class="ni on"><div class="ni-i">☰</div><div class="ni-l">Menyu</div></div>
+      </div>
+    </div>
+
+    <!-- ── SIMPLE REGISTER (alternative) ── -->
+    <div class="screen" id="u-register">
+      <div class="sb"><span>9:41</span><div class="sb-r"><span>📶</span><span>🔋</span></div></div>
+      <div class="tb"><button class="back" onclick="goU('u-login')">←</button><div class="tb-t">Ro'yxat</div></div>
+      <div class="scr" style="padding:0 22px 20px;display:flex;flex-direction:column;gap:10px;">
+        <!-- Recommend OneID -->
+        <div style="background:rgba(0,169,79,.12);border:1.5px solid rgba(0,169,79,.3);border-radius:13px;padding:13px;display:flex;gap:10px;align-items:center;">
+          <span style="font-size:22px;">🇺🇿</span>
+          <div style="flex:1;">
+            <div style="font-size:12px;font-weight:700;color:#22c55e;margin-bottom:2px;">One ID tavsiya etiladi</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.6);">Forma to'ldirmasdan, 1 ta tugma bilan</div>
+          </div>
+          <button class="btn-sm" style="background:rgba(0,169,79,.25);border-color:rgba(0,169,79,.4);color:#22c55e;white-space:nowrap;" onclick="goU('u-oneid')">Kirish →</button>
+        </div>
+        <div class="or-div">qo'lda to'ldirish</div>
+        <div><div class="lbl">TO'LIQ ISM</div><input class="inp" type="text" placeholder="Ism Familiya"></div>
+        <div><div class="lbl">TELEFON</div><input class="inp" type="tel" placeholder="+998 90 ..."></div>
+        <div>
+          <div class="lbl">MAHALLA</div>
+          <select class="inp" style="appearance:none;"><option>Navro'z</option><option>Yangi hayot</option><option>Markaziy</option></select>
+        </div>
+        <div><div class="lbl">PAROL</div><input class="inp" type="password" placeholder="••••••••"></div>
+        <button class="btn btn-g" onclick="goU('u-otp')">Davom etish</button>
+      </div>
+    </div>
+    <!-- ── 10. MENING QR-KODIM / SMART-ID ── -->
+    <div class="screen" id="u-qr">
+      <div class="sb"><span>9:41</span><div class="sb-r"><span>📶</span><span>🔋</span></div></div>
+      <div class="tb"><button class="back" onclick="goU('u-home')">←</button><div class="tb-t">Balonni topshirish</div></div>
+      <div class="scr" style="padding:0 20px 80px;display:flex;flex-direction:column;gap:14px;">
+
+        <!-- toggle -->
+        <div class="seg">
+          <button class="on" id="qr-tab-phone" onclick="qrTab('phone')">📲 Telefon QR</button>
+          <button id="qr-tab-card" onclick="qrTab('card')">💳 Plastik karta</button>
+        </div>
+
+        <!-- TELEFON QR -->
+        <div id="qr-view-phone" style="display:flex;flex-direction:column;gap:14px;">
+          <div class="qr-card">
+            <svg class="qr-svg" id="uQrCode" viewBox="0 0 29 29" shape-rendering="crispEdges"></svg>
+            <div style="height:1px;background:#efeaf8;margin:14px 0 12px;"></div>
+            <div class="qr-name">Karimov Sherzod</div>
+            <div class="qr-id">ID · GZ-30507-0018 · Navro'z 14-uy</div>
+          </div>
+
+          <!-- OTP zaxira kod -->
+          <div>
+            <div class="lbl" style="margin-bottom:7px;">📶 KAMERA ISHLAMASA — ZAXIRA KOD</div>
+            <div class="otp-fallback">
+              <div class="otp-ring">
+                <svg viewBox="0 0 32 32"><circle class="ot-bg" cx="16" cy="16" r="14"/><circle class="ot-fg" cx="16" cy="16" r="14"/></svg>
+                <div class="ot-num" id="u-otp-count">60</div>
+              </div>
+              <div style="flex:1;">
+                <div class="otp-digits" id="u-otp-digits"></div>
+                <div style="font-size:9px;color:rgba(255,255,255,.5);margin-top:5px;">Har 60 soniyada yangilanadi · haydovchi qo'lda kiritadi</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="g" style="padding:12px 14px;display:flex;gap:10px;align-items:center;">
+            <span style="font-size:18px;">ℹ️</span>
+            <div style="font-size:11px;color:rgba(255,255,255,.72);line-height:1.5;">Haydovchiga ko'rsating. U skanerlagach tizimda avtomatik <strong style="color:#fff;">«+1 standart 50 L balon topshirildi»</strong> deb qayd etiladi.</div>
+          </div>
+        </div>
+
+        <!-- PLASTIK KARTA -->
+        <div id="qr-view-card" style="display:none;flex-direction:column;gap:14px;">
+          <div class="smartcard">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;position:relative;z-index:1;">
+              <div>
+                <div style="font-size:9px;font-weight:700;letter-spacing:.12em;opacity:.8;">GAZ KARTA · 50 L STANDART</div>
+                <div style="font-size:15px;font-weight:900;margin-top:3px;">GazTracker</div>
+              </div>
+              <span style="font-size:18px;">🇺🇿</span>
+            </div>
+            <div class="sc-chip" style="margin-bottom:14px;position:relative;z-index:1;"></div>
+            <div class="barcode" style="margin-bottom:12px;position:relative;z-index:1;"></div>
+            <div style="display:flex;justify-content:space-between;align-items:flex-end;position:relative;z-index:1;">
+              <div>
+                <div style="font-size:13px;font-weight:800;letter-spacing:.05em;">KARIMOV SHERZOD</div>
+                <div style="font-size:10px;opacity:.8;letter-spacing:.1em;margin-top:2px;">GZ-30507-0018</div>
+              </div>
+              <div style="text-align:right;"><div style="font-size:8px;opacity:.7;">BALANS</div><div style="font-size:15px;font-weight:900;">2 dona</div></div>
+            </div>
+          </div>
+          <div class="g" style="padding:13px 14px;display:flex;gap:11px;align-items:center;">
+            <span style="font-size:22px;">👴</span>
+            <div style="font-size:11px;color:rgba(255,255,255,.75);line-height:1.5;">Smartfoni yo'qlar uchun. Haydovchi shtrix-kodni skanerlaydi — telefon shart emas. Karta mahalla yoki «Gaz» shaxobchasidan beriladi.</div>
+          </div>
+          <button class="btn btn-g">📮 Yangi plastik karta buyurtma qilish</button>
+        </div>
+      </div>
+      <div class="nav">
+        <div class="ni" onclick="goU('u-home')"><div class="ni-i">🗺️</div><div class="ni-l">Xarita</div></div>
+        <div class="ni" onclick="goU('u-history')"><div class="ni-i">📋</div><div class="ni-l">Tarix</div></div>
+        <div class="ni" onclick="goU('u-notif')"><div class="ni-i">🔔</div><div class="ni-l">Xabarnoma</div></div>
+        <div class="ni" onclick="goU('u-menu')"><div class="ni-i">☰</div><div class="ni-l">Menyu</div></div>
+      </div>
+    </div>
+
+    <!-- ── 11. GAZ KARTASI / TO'LOV ── -->
+    <div class="screen" id="u-card">
+      <div class="sb"><span>9:41</span><div class="sb-r"><span>📶</span><span>🔋</span></div></div>
+      <div class="tb"><button class="back" onclick="goU('u-home')">←</button><div class="tb-t">Gaz kartasi</div></div>
+      <div class="scr" style="padding:0 16px 80px;display:flex;flex-direction:column;gap:12px;">
+
+        <!-- BALANS -->
+        <div class="bal-hero">
+          <div>
+            <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:.05em;">BALONLAR BALANSI</div>
+            <div style="font-size:30px;font-weight:900;color:white;line-height:1.1;">2 <span style="font-size:14px;font-weight:600;color:rgba(255,255,255,.6);">dona</span></div>
+            <div style="font-size:11px;color:rgba(255,255,255,.55);">≈ 150 000 so'm · 1 dona = 75 000</div>
+          </div>
+          <div style="width:54px;height:54px;border-radius:15px;background:rgba(34,197,94,.25);display:flex;align-items:center;justify-content:center;font-size:26px;">⛽</div>
+        </div>
+
+        <!-- TO'LDIRISH -->
+        <div>
+          <div class="lbl" style="margin-bottom:8px;">💳 BALANSNI TO'LDIRISH</div>
+          <div class="pay-row">
+            <button class="pay-btn pay-click" onclick="topupToast('Click')"><span class="pay-ic">C</span>Click</button>
+            <button class="pay-btn pay-payme" onclick="topupToast('Payme')"><span class="pay-ic">P</span>Payme</button>
+            <button class="pay-btn pay-uzum" onclick="topupToast('Uzum')"><span class="pay-ic">U</span>Uzum</button>
+          </div>
+        </div>
+
+        <!-- MASOFADAN (OILAVIY) -->
+        <div class="g" style="padding:13px 14px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="font-size:20px;">👨‍👩‍👧</span>
+            <div style="flex:1;">
+              <div style="font-size:12px;font-weight:800;color:white;">Masofadan to'ldirish</div>
+              <div style="font-size:10px;color:rgba(255,255,255,.55);">Shahardagi farzandlaringiz to'ldira oladi</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:11px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.28);">
+            <span style="font-size:16px;">✅</span>
+            <div style="flex:1;font-size:11px;color:rgba(255,255,255,.8);">Dilnoza (qizingiz) Click orqali <strong style="color:#22c55e;">+1 balon</strong> to'ldirdi</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.4);">2 soat</div>
+          </div>
+          <div style="font-size:10px;color:rgba(255,255,255,.45);margin-top:8px;">Sizning karta raqamingiz: <strong style="color:rgba(255,255,255,.7);">GZ-30507-0018</strong></div>
+        </div>
+
+        <!-- IJTIMOIY KVOTA -->
+        <div class="kvota-card">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:22px;">🤝</span>
+            <div style="flex:1;">
+              <div style="font-size:12px;font-weight:800;color:#22c55e;">Ijtimoiy kvota faol</div>
+              <div style="font-size:10px;color:rgba(255,255,255,.65);margin-top:1px;">«Temir daftar» · One ID orqali avtomatik</div>
+            </div>
+            <span style="font-size:9px;padding:3px 8px;background:rgba(0,169,79,.25);border:1px solid rgba(0,169,79,.45);border-radius:10px;color:#22c55e;font-weight:700;">✓ One ID</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:11px;padding:9px 11px;border-radius:11px;background:rgba(0,0,0,.12);">
+            <span style="font-size:16px;">🎁</span>
+            <div style="flex:1;font-size:11px;color:rgba(255,255,255,.82);">Iyun oyi uchun <strong style="color:#fff;">1 dona bepul balon</strong> yuklandi</div>
+          </div>
+        </div>
+
+        <!-- JOYIDA NAQD -->
+        <div class="g" style="padding:12px 14px;display:flex;gap:10px;align-items:center;">
+          <span style="font-size:18px;">💵</span>
+          <div style="font-size:11px;color:rgba(255,255,255,.7);line-height:1.5;">Kartada pul bo'lmasa — haydovchiga <strong style="color:#fff;">naqd</strong> bering. U o'z ilovasidagi virtual kassa orqali balonni shu zahoti hisobdan chiqaradi.</div>
+        </div>
+      </div>
+      <div class="nav">
+        <div class="ni" onclick="goU('u-home')"><div class="ni-i">🗺️</div><div class="ni-l">Xarita</div></div>
+        <div class="ni" onclick="goU('u-history')"><div class="ni-i">📋</div><div class="ni-l">Tarix</div></div>
+        <div class="ni" onclick="goU('u-notif')"><div class="ni-i">🔔</div><div class="ni-l">Xabarnoma</div></div>
+        <div class="ni" onclick="goU('u-menu')"><div class="ni-i">☰</div><div class="ni-l">Menyu</div></div>
+      </div>
+    </div>
+
+  </div><!-- /uPhone -->
+</div>
+
+<!-- ════ HAYDOVCHI ILOVASI ════ -->
+<div class="col">
+  <div class="col-label">🚛 Haydovchi ilovasi</div>
+  <div class="phone" id="dPhone">
+    <div class="bg bg-d"></div><div class="bg-glow"></div>
+
+    <!-- ── D-1. MARSHRUT (bosh ekran) ── -->
+    <div class="screen active" id="d-home">
+      <div class="sb"><span>9:41</span><div class="sb-r"><span>📶</span><span>🔋</span></div></div>
+      <div style="padding:6px 18px 8px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+        <div>
+          <div style="font-size:11px;color:rgba(255,255,255,.5);">Haydovchi · UZ-01</div>
+          <div style="font-size:15px;font-weight:800;color:white;">Hamid Abdullayev</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <div class="dr-badge">GPS faol</div>
+          <button class="ava" onclick="goD('d-profile')">👤</button>
+        </div>
+      </div>
+      <div style="padding:0 18px 8px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:11px;color:rgba(255,255,255,.65);">📍 Navro'z mahallasi · Xo'jaeli</div>
+        <div class="chip ch-g">🚛 Smenada</div>
+      </div>
+
+      <!-- DONABAY BALANS + OFFLINE -->
+      <div style="padding:0 14px 10px;flex-shrink:0;">
+        <div class="cyl-bal">
+          <div class="cyl-ring">
+            <svg viewBox="0 0 52 52"><circle class="cb-bg" cx="26" cy="26" r="22"/><circle class="cb-fg" id="d-bal-ring" cx="26" cy="26" r="22" stroke-dasharray="138" stroke-dashoffset="18"/></svg>
+            <div class="cb-n" id="d-bal-num">87</div>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:12px;font-weight:800;color:white;">Bortda <span id="d-bal-txt">87</span>/100 dona</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.55);">Har topshirishda 1 donaga kamayadi · kamomad yo'q</div>
+          </div>
+          <span class="offline-badge" id="d-offline" style="display:none;">📴 Offline · <span id="d-cache">0</span></span>
+          <span class="chip ch-b" id="d-online">☁️ Sinxron</span>
+        </div>
+      </div>
+      <div class="map-box g" style="margin:0 14px 10px;height:172px;flex-shrink:0;">
+        <svg class="map-svg" viewBox="0 0 308 172" xmlns="http://www.w3.org/2000/svg">
+          <rect width="308" height="172" class="map-bg-f" rx="16"/>
+          <ellipse cx="48" cy="44" rx="26" ry="16" class="park" opacity=".7"/>
+          <rect x="88" y="16" width="46" height="28" rx="4" class="blk"/>
+          <rect x="150" y="16" width="42" height="28" rx="4" class="blk"/>
+          <rect x="222" y="16" width="46" height="28" rx="4" class="blk"/>
+          <rect x="88" y="74" width="44" height="32" rx="4" class="blk"/>
+          <rect x="150" y="74" width="46" height="32" rx="4" class="blk"/>
+          <rect x="222" y="74" width="46" height="32" rx="4" class="blk"/>
+          <rect x="88" y="128" width="44" height="30" rx="4" class="blk"/>
+          <rect x="150" y="128" width="50" height="30" rx="4" class="blk"/>
+          <rect x="14" y="74" width="40" height="44" rx="4" class="blk"/>
+          <line x1="0" y1="60" x2="308" y2="60" class="r-maj"/><line x1="0" y1="118" x2="308" y2="118" class="r-maj"/>
+          <line x1="76" y1="0" x2="76" y2="172" class="r-maj"/><line x1="142" y1="0" x2="142" y2="172" class="r-maj"/><line x1="208" y1="0" x2="208" y2="172" class="r-maj"/>
+          <line x1="0" y1="60" x2="308" y2="60" class="r-dash"/><line x1="0" y1="118" x2="308" y2="118" class="r-dash"/>
+
+          <!-- marshrut: joriy → 1 → 2 → 3 -->
+          <path id="dRoute" d="M28,118 L76,118 L76,60 L140,60 L208,60 L208,118 L262,118" pathLength="100" class="route-bg"/>
+          <path d="M28,118 L76,118 L76,60 L140,60 L208,60 L208,118 L262,118" pathLength="100"
+                class="route-done" stroke-dasharray="100" stroke-dashoffset="100">
+            <animate attributeName="stroke-dashoffset" values="100;0;0" keyTimes="0;0.82;1" dur="9s" repeatCount="indefinite"/>
+          </path>
+
+          <!-- to'xtash nuqtalari -->
+          <g transform="translate(140,60)"><circle r="8" fill="#FF5722" opacity=".25"/><circle r="5" fill="#FF5722"/><text x="0" y="2.5" text-anchor="middle" style="font-size:7px;fill:white;font-weight:800;font-family:Inter,sans-serif;">1</text></g>
+          <g transform="translate(208,60)"><circle r="8" fill="#f5a623" opacity=".25"/><circle r="5" fill="#f5a623"/><text x="0" y="2.5" text-anchor="middle" style="font-size:7px;fill:white;font-weight:800;font-family:Inter,sans-serif;">2</text></g>
+          <g transform="translate(262,118)"><circle r="8" fill="#60a5fa" opacity=".25"/><circle r="5" fill="#60a5fa"/><text x="0" y="2.5" text-anchor="middle" style="font-size:7px;fill:white;font-weight:800;font-family:Inter,sans-serif;">3</text></g>
+
+          <!-- yuk mashinasi -->
+          <g>
+            <circle r="0" class="ping1"/><circle r="0" class="ping2"/>
+            <circle r="11" fill="#22c55e" opacity=".25"/>
+            <circle r="8" fill="#22c55e" stroke="#fff" stroke-width="1.4"/>
+            <text x="0" y="3.2" text-anchor="middle" style="font-size:8px;fill:white;">🚛</text>
+            <animateMotion dur="9s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;0.82;1" calcMode="linear" rotate="0">
+              <mpath href="#dRoute"/>
+            </animateMotion>
+          </g>
+        </svg>
+      </div>
+
+      <!-- katta CTA -->
+      <div style="padding:0 14px 8px;flex-shrink:0;">
+        <button class="btn btn-s" style="display:flex;align-items:center;justify-content:center;gap:9px;" onclick="goD('d-nav')">
+          <span style="font-size:17px;">🧭</span> Navigatsiyani boshlash
+        </button>
+      </div>
+
+      <!-- stat -->
+      <div style="padding:0 14px 8px;flex-shrink:0;">
+        <div class="dc-row">
+          <div class="dc"><div class="dc-v">8</div><div class="dc-l">Qoldi</div></div>
+          <div class="dc"><div class="dc-v">6</div><div class="dc-l">Bajarildi</div></div>
+          <div class="dc"><div class="dc-v">72%</div><div class="dc-l">Sig'im</div></div>
+          <div class="dc"><div class="dc-v">18 km</div><div class="dc-l">Bosildi</div></div>
+        </div>
+        <div class="prog-bar"><div class="prog-fill" style="width:43%;"></div></div>
+        <div style="font-size:10px;color:rgba(255,255,255,.4);text-align:center;margin-top:4px;">6 ta yetkazildi / 14 ta</div>
+      </div>
+
+      <!-- keyingi manzillar -->
+      <div class="scr" style="padding:0 14px 80px;">
+        <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.45);letter-spacing:.05em;margin-bottom:8px;">KEYINGI MANZILLAR</div>
+        <div class="or-row" style="border-color:rgba(255,87,34,.35);background:rgba(255,87,34,.12);cursor:pointer;" onclick="goD('d-nav')">
+          <div class="or-n" style="background:#FF5722;">1</div>
+          <div class="or-inf"><div class="or-nm">Karimova Malika</div><div class="or-ad">📍 Navro'z 14-uy · 50 kg · 1.2 km</div></div>
+          <span style="font-size:16px;">🧭</span>
+        </div>
+        <div class="or-row"><div class="or-n">2</div><div class="or-inf"><div class="or-nm">Toshpulatov Hamid</div><div class="or-ad">📍 Navro'z 7-uy · 100 kg · 1.8 km</div></div><span style="font-size:14px;">›</span></div>
+        <div class="or-row"><div class="or-n">3</div><div class="or-inf"><div class="or-nm">Yusupova Zulfiya</div><div class="or-ad">📍 Ko'k terak 3-uy · 50 kg · 2.4 km</div></div><span style="font-size:14px;">›</span></div>
+        <div class="or-row" style="opacity:.5;cursor:pointer;" onclick="goD('d-list')"><div class="or-n">+5</div><div class="or-inf"><div class="or-nm">Yana 5 ta manzil</div><div class="or-ad">To'liq ro'yxatni ochish</div></div><span style="font-size:14px;">›</span></div>
+      </div>
+
+      <div class="toast" id="dt" style="display:none;background:rgba(34,197,94,.16);border-color:rgba(34,197,94,.42);"><span>✅</span><span id="dt-msg">Topshirildi!</span></div>
+      <div class="nav">
+        <div class="ni on"><div class="ni-i">🗺️</div><div class="ni-l">Marshrut</div></div>
+        <div class="ni" onclick="goD('d-list')"><div class="ni-i">📋</div><div class="ni-l">Ro'yxat</div></div>
+        <div class="ni" onclick="goD('d-stats')"><div class="ni-i">📊</div><div class="ni-l">Statistika</div></div>
+        <div class="ni" onclick="goD('d-profile')"><div class="ni-i">👤</div><div class="ni-l">Profil</div></div>
+      </div>
+    </div>
+
+    <!-- ── D-6. SKANERLASH / TOPSHIRISH ── -->
+    <div class="screen" id="d-scan">
+      <div class="sb"><span>9:41</span><div class="sb-r"><span>📶</span><span>🔋</span></div></div>
+      <div class="tb">
+        <button class="back" onclick="goD('d-nav')">←</button>
+        <div class="tb-t">1/8 · Topshirish</div>
+        <div class="chip ch-o">📍 Manzilda</div>
+      </div>
+      <div class="scr" style="padding:0 16px 24px;display:flex;flex-direction:column;gap:12px;">
+
+        <!-- mijoz -->
+        <div class="g" style="padding:12px 14px;display:flex;align-items:center;gap:11px;">
+          <div style="width:40px;height:40px;border-radius:11px;background:rgba(255,87,34,.2);display:flex;align-items:center;justify-content:center;font-size:18px;">📦</div>
+          <div style="flex:1;"><div style="font-size:13px;font-weight:800;color:white;">Karimova Malika</div><div style="font-size:10px;color:rgba(255,255,255,.55);">Navro'z 14-uy · 1 dona 50 L balon</div></div>
+        </div>
+
+        <!-- usul toggle -->
+        <div class="seg">
+          <button class="on" id="sc-tab-qr" onclick="scTab('qr')">📷 QR skaner</button>
+          <button id="sc-tab-otp" onclick="scTab('otp')">🔢 OTP kod</button>
+        </div>
+
+        <!-- QR SKANER -->
+        <div id="sc-view-qr">
+          <div class="scan-frame">
+            <div class="scan-line"></div>
+            <div class="corner c-tl"></div><div class="corner c-tr"></div><div class="corner c-bl"></div><div class="corner c-br"></div>
+          </div>
+          <div style="font-size:11px;color:rgba(255,255,255,.6);text-align:center;margin-top:10px;line-height:1.5;">Mijozning telefon QR yoki plastik kartasini ramkaga tuting</div>
+        </div>
+
+        <!-- OTP KIRITISH -->
+        <div id="sc-view-otp" style="display:none;">
+          <div style="font-size:11px;color:rgba(255,255,255,.6);text-align:center;margin-bottom:11px;">Mijoz ilovasidagi 6 xonali kodni kiriting</div>
+          <div style="display:flex;gap:7px;justify-content:center;margin-bottom:14px;">
+            <div class="otp-input-box" data-otp="0"></div><div class="otp-input-box" data-otp="1"></div>
+            <div class="otp-input-box" data-otp="2"></div><div class="otp-input-box" data-otp="3"></div>
+            <div class="otp-input-box" data-otp="4"></div><div class="otp-input-box" data-otp="5"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+            <div class="otp-key" onclick="otpKey('1')">1</div><div class="otp-key" onclick="otpKey('2')">2</div><div class="otp-key" onclick="otpKey('3')">3</div>
+            <div class="otp-key" onclick="otpKey('4')">4</div><div class="otp-key" onclick="otpKey('5')">5</div><div class="otp-key" onclick="otpKey('6')">6</div>
+            <div class="otp-key" onclick="otpKey('7')">7</div><div class="otp-key" onclick="otpKey('8')">8</div><div class="otp-key" onclick="otpKey('9')">9</div>
+            <div class="otp-key" style="font-size:15px;" onclick="otpKey('clear')">✕</div><div class="otp-key" onclick="otpKey('0')">0</div><div class="otp-key" style="font-size:16px;" onclick="otpKey('back')">⌫</div>
+          </div>
+        </div>
+
+        <!-- TASDIQ -->
+        <div class="g" style="padding:13px 14px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+            <span style="font-size:20px;">⛽</span>
+            <div style="flex:1;"><div style="font-size:13px;font-weight:800;color:white;">+1 standart 50 L balon</div><div style="font-size:10px;color:rgba(255,255,255,.55);">75 000 so'm</div></div>
+            <span class="chip ch-g">Standart</span>
+          </div>
+          <div class="lbl" style="margin-bottom:7px;">TO'LOV USULI</div>
+          <div class="seg">
+            <button class="on" id="pay-card" onclick="payMode('card')">💳 Kartadan</button>
+            <button id="pay-cash" onclick="payMode('cash')">💵 Naqd</button>
+          </div>
+          <div id="pay-note-card" style="font-size:10px;color:rgba(255,255,255,.55);margin-top:8px;">Mijoz balansidan 1 dona avtomatik yechiladi · balans 2 → 1</div>
+          <div id="pay-note-cash" style="display:none;font-size:10px;color:#f5a623;margin-top:8px;line-height:1.5;">💵 75 000 so'm naqd olib, virtual kassa orqali mijoz kartasiga 1 dona shu zahoti tushiriladi</div>
+        </div>
+
+        <button class="btn btn-s" style="background:linear-gradient(135deg,#22c55e,#16a34a);box-shadow:0 5px 18px rgba(34,197,94,.4);" onclick="confirmDelivery()">✓ Topshirildi · balansdan −1</button>
+        <div style="font-size:10px;color:rgba(255,255,255,.35);text-align:center;line-height:1.5;">Internet bo'lmasa ham qabul qilinadi — keshga yoziladi va tarmoq paydo bo'lganda avtomatik sinxronlanadi</div>
+      </div>
+    </div>
+
+    <!-- ── D-2. NAVIGATSIYA (faol yetkazib berish) ── -->
+    <div class="screen" id="d-nav">
+      <div class="sb"><span>9:41</span><div class="sb-r"><span>📶</span><span>🔋</span></div></div>
+      <div class="tb">
+        <button class="back" onclick="goD('d-home')">✕</button>
+        <div class="tb-t">1/8 · Karimova Malika</div>
+        <div class="chip ch-o">🛰️ Yo'lda</div>
+      </div>
+
+      <!-- yo'nalish banneri -->
+      <div class="nav-banner">
+        <div class="nav-arrow">↱</div>
+        <div style="flex:1;">
+          <div style="font-size:18px;font-weight:900;color:white;line-height:1;"><span id="d-eta-dist">200</span> m</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.7);margin-top:3px;">O'ngga buriling · Navro'z ko'chasi</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:13px;font-weight:800;color:white;">~<span id="d-eta-min">4</span> daq</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.5);">yetib borish</div>
+        </div>
+      </div>
+
+      <!-- katta navigatsiya xaritasi -->
+      <div class="map-box g" style="margin:0 14px 10px;flex:1;min-height:0;">
+        <svg class="map-svg" viewBox="0 0 308 250" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+          <rect width="308" height="250" class="map-bg-f"/>
+          <ellipse cx="50" cy="40" rx="30" ry="20" class="park" opacity=".7"/>
+          <rect x="92" y="30" width="48" height="36" rx="4" class="blk"/>
+          <rect x="160" y="30" width="44" height="36" rx="4" class="blk"/>
+          <rect x="92" y="120" width="46" height="40" rx="4" class="blk"/>
+          <rect x="20" y="120" width="50" height="40" rx="4" class="blk"/>
+          <rect x="92" y="185" width="46" height="40" rx="4" class="blk"/>
+          <rect x="180" y="120" width="60" height="40" rx="4" class="blk"/>
+          <rect x="180" y="185" width="60" height="40" rx="4" class="blk"/>
+          <line x1="0" y1="90" x2="308" y2="90" class="r-maj"/><line x1="0" y1="172" x2="308" y2="172" class="r-maj"/>
+          <line x1="80" y1="0" x2="80" y2="250" class="r-maj"/><line x1="150" y1="0" x2="150" y2="250" class="r-maj"/>
+          <line x1="0" y1="90" x2="308" y2="90" class="r-dash"/><line x1="80" y1="0" x2="80" y2="250" class="r-dash"/>
+          <text x="86" y="86" class="m-lbl">Navro'z ko'chasi</text>
+
+          <!-- marshrut joriy → manzil -->
+          <path id="nRoute" d="M40,210 L80,210 L80,90 L235,90" pathLength="100" class="route-bg" stroke-width="5"/>
+          <path d="M40,210 L80,210 L80,90 L235,90" pathLength="100" class="route-done" stroke-width="5.5"
+                stroke-dasharray="100" stroke-dashoffset="100">
+            <animate attributeName="stroke-dashoffset" values="100;0;0" keyTimes="0;0.78;1" dur="7s" repeatCount="indefinite"/>
+          </path>
+
+          <!-- manzil (1-mijoz) -->
+          <g transform="translate(235,90)">
+            <circle r="14" fill="#FF5722" opacity=".18"/>
+            <circle r="9" fill="#FF5722"/>
+            <text x="0" y="3.5" text-anchor="middle" style="font-size:10px;fill:white;font-weight:800;font-family:Inter,sans-serif;">1</text>
+            <text x="0" y="-18" text-anchor="middle" style="font-size:9px;fill:#FF5722;font-weight:800;font-family:Inter,sans-serif;">14-uy</text>
+          </g>
+
+          <!-- yuk mashinasi -->
+          <g>
+            <circle r="0" class="ping1"/><circle r="0" class="ping2"/>
+            <circle r="15" fill="#6644ee" opacity=".22"/>
+            <circle r="11" fill="#6644ee" stroke="#fff" stroke-width="2"/>
+            <text x="0" y="4.5" text-anchor="middle" style="font-size:12px;fill:white;">🚛</text>
+            <animateMotion dur="7s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;0.78;1" calcMode="linear" rotate="0">
+              <mpath href="#nRoute"/>
+            </animateMotion>
+          </g>
+        </svg>
+      </div>
+
+      <!-- pastki varaq: joriy mijoz -->
+      <div class="sheet">
+        <div style="display:flex;align-items:center;gap:11px;margin-bottom:11px;">
+          <div style="width:42px;height:42px;border-radius:12px;background:rgba(255,87,34,.2);display:flex;align-items:center;justify-content:center;font-size:18px;">📦</div>
+          <div style="flex:1;">
+            <div style="font-size:14px;font-weight:800;color:white;">Karimova Malika</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.6);">Navro'z 14-uy · 50 kg · 75 000 so'm</div>
+          </div>
+          <a href="tel:" style="width:40px;height:40px;border-radius:12px;background:rgba(34,197,94,.22);display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:18px;">📞</a>
+        </div>
+        <div class="d-act">
+          <button class="btn btn-g" style="flex:0 0 38%;padding:12px;font-size:12px;" onclick="goD('d-home')">Mijoz yo'q</button>
+          <button class="btn btn-s" style="padding:12px;font-size:13px;background:linear-gradient(135deg,#22c55e,#16a34a);box-shadow:0 5px 18px rgba(34,197,94,.4);" onclick="goD('d-scan')">📷 Skanerlash · topshirish</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── D-3. RO'YXAT ── -->
+    <div class="screen" id="d-list">
+      <div class="sb"><span>9:41</span><div class="sb-r"><span>📶</span><span>🔋</span></div></div>
+      <div class="tb"><button class="back" onclick="goD('d-home')">←</button><div class="tb-t">Bugungi marshrut · 14 ta</div></div>
+      <div style="padding:0 16px 8px;display:flex;gap:6px;flex-shrink:0;">
+        <button class="btn-sm" style="background:rgba(255,255,255,.22);">Hammasi 14</button>
+        <button class="btn-sm">Qoldi 8</button>
+        <button class="btn-sm">Bajarildi 6</button>
+      </div>
+      <div class="scr" style="padding:0 16px 80px;display:flex;flex-direction:column;gap:7px;">
+        <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.45);letter-spacing:.05em;padding:3px 0;">HOZIR</div>
+        <div class="or-row" style="border-color:rgba(255,87,34,.4);background:rgba(255,87,34,.13);cursor:pointer;" onclick="goD('d-nav')">
+          <div class="or-n" style="background:#FF5722;">1</div>
+          <div class="or-inf"><div class="or-nm">Karimova Malika</div><div class="or-ad">📍 Navro'z 14-uy · 50 kg · +998 90 123 45 67</div></div>
+          <span style="font-size:16px;">🧭</span>
+        </div>
+        <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.45);letter-spacing:.05em;padding:5px 0 3px;">NAVBATDA</div>
+        <div class="or-row"><div class="or-n">2</div><div class="or-inf"><div class="or-nm">Toshpulatov Hamid</div><div class="or-ad">📍 Navro'z 7-uy · 100 kg</div></div><a href="tel:" style="text-decoration:none;font-size:15px;">📞</a></div>
+        <div class="or-row"><div class="or-n">3</div><div class="or-inf"><div class="or-nm">Yusupova Zulfiya</div><div class="or-ad">📍 Ko'k terak 3-uy · 50 kg</div></div><a href="tel:" style="text-decoration:none;font-size:15px;">📞</a></div>
+        <div class="or-row"><div class="or-n">4</div><div class="or-inf"><div class="or-nm">Raximov Bobur</div><div class="or-ad">📍 Yangi hayot 8-uy · 25 kg</div></div><a href="tel:" style="text-decoration:none;font-size:15px;">📞</a></div>
+        <div class="or-row"><div class="or-n">5</div><div class="or-inf"><div class="or-nm">Sobirova Nigora</div><div class="or-ad">📍 Uchtepa 21-uy · 50 kg</div></div><a href="tel:" style="text-decoration:none;font-size:15px;">📞</a></div>
+        <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.45);letter-spacing:.05em;padding:5px 0 3px;">BAJARILDI</div>
+        <div class="or-row" style="opacity:.55;"><div class="or-n" style="background:rgba(34,197,94,.4);">✓</div><div class="or-inf"><div class="or-nm">Aliyev Jasur</div><div class="or-ad">📍 Markaziy 2-uy · 50 kg · 10:42</div></div><span style="font-size:10px;color:#22c55e;font-weight:700;">To'landi</span></div>
+        <div class="or-row" style="opacity:.55;"><div class="or-n" style="background:rgba(34,197,94,.4);">✓</div><div class="or-inf"><div class="or-nm">Ergasheva Dilnoza</div><div class="or-ad">📍 Markaziy 9-uy · 25 kg · 10:18</div></div><span style="font-size:10px;color:#22c55e;font-weight:700;">To'landi</span></div>
+      </div>
+      <div class="nav">
+        <div class="ni" onclick="goD('d-home')"><div class="ni-i">🗺️</div><div class="ni-l">Marshrut</div></div>
+        <div class="ni on"><div class="ni-i">📋</div><div class="ni-l">Ro'yxat</div></div>
+        <div class="ni" onclick="goD('d-stats')"><div class="ni-i">📊</div><div class="ni-l">Statistika</div></div>
+        <div class="ni" onclick="goD('d-profile')"><div class="ni-i">👤</div><div class="ni-l">Profil</div></div>
+      </div>
+    </div>
+
+    <!-- ── D-4. STATISTIKA ── -->
+    <div class="screen" id="d-stats">
+      <div class="sb"><span>9:41</span><div class="sb-r"><span>📶</span><span>🔋</span></div></div>
+      <div class="tb"><button class="back" onclick="goD('d-home')">←</button><div class="tb-t">Statistika</div></div>
+      <div class="scr" style="padding:0 16px 80px;display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.45);letter-spacing:.05em;padding:3px 0;">BUGUN · 24 IYUN</div>
+        <div class="dc-row">
+          <div class="dc"><div class="dc-v">6</div><div class="dc-l">Yetkazildi</div></div>
+          <div class="dc"><div class="dc-v">18 km</div><div class="dc-l">Bosildi</div></div>
+          <div class="dc"><div class="dc-v">375 kg</div><div class="dc-l">Gaz</div></div>
+        </div>
+        <div class="g" style="padding:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <div style="font-size:11px;color:rgba(255,255,255,.6);">Bugungi daromad</div>
+            <div class="chip ch-g">+12%</div>
+          </div>
+          <div style="font-size:26px;font-weight:900;color:white;">540 000 <span style="font-size:13px;font-weight:600;color:rgba(255,255,255,.5);">so'm</span></div>
+        </div>
+
+        <!-- haftalik grafik -->
+        <div class="g" style="padding:14px;">
+          <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:.05em;margin-bottom:12px;">SHU HAFTA · YETKAZIB BERISH</div>
+          <div style="display:flex;gap:8px;align-items:flex-end;">
+            <div class="wk-bar"><div class="wk-track"><div class="wk-fill" style="height:45px;"></div></div><div class="wk-d">Du</div></div>
+            <div class="wk-bar"><div class="wk-track"><div class="wk-fill" style="height:54px;"></div></div><div class="wk-d">Se</div></div>
+            <div class="wk-bar"><div class="wk-track"><div class="wk-fill" style="height:38px;"></div></div><div class="wk-d">Ch</div></div>
+            <div class="wk-bar"><div class="wk-track"><div class="wk-fill" style="height:61px;background:linear-gradient(180deg,#22c55e,#16a34a);"></div></div><div class="wk-d" style="color:#22c55e;">Pa</div></div>
+            <div class="wk-bar"><div class="wk-track"><div class="wk-fill" style="height:30px;background:rgba(255,255,255,.2);"></div></div><div class="wk-d">Ju</div></div>
+            <div class="wk-bar"><div class="wk-track"><div class="wk-fill" style="height:0;"></div></div><div class="wk-d">Sh</div></div>
+            <div class="wk-bar"><div class="wk-track"><div class="wk-fill" style="height:0;"></div></div><div class="wk-d">Ya</div></div>
+          </div>
+        </div>
+
+        <div class="g" style="padding:14px;">
+          <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:.05em;margin-bottom:10px;">MASHINA SIG'IMI</div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.6);margin-bottom:6px;">
+            <span>Qolgan: 125 kg</span><span>To'liq: 500 kg</span>
+          </div>
+          <div class="prog-bar" style="height:8px;"><div class="prog-fill" style="width:25%;background:#f5a623;"></div></div>
+          <div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:6px;">⚠️ Sig'im 25% — yana 2-3 manzilga yetadi</div>
+        </div>
+      </div>
+      <div class="nav">
+        <div class="ni" onclick="goD('d-home')"><div class="ni-i">🗺️</div><div class="ni-l">Marshrut</div></div>
+        <div class="ni" onclick="goD('d-list')"><div class="ni-i">📋</div><div class="ni-l">Ro'yxat</div></div>
+        <div class="ni on"><div class="ni-i">📊</div><div class="ni-l">Statistika</div></div>
+        <div class="ni" onclick="goD('d-profile')"><div class="ni-i">👤</div><div class="ni-l">Profil</div></div>
+      </div>
+    </div>
+
+    <!-- ── D-5. PROFIL ── -->
+    <div class="screen" id="d-profile">
+      <div class="sb"><span>9:41</span><div class="sb-r"><span>📶</span><span>🔋</span></div></div>
+      <div style="padding:10px 20px 14px;display:flex;align-items:center;gap:13px;flex-shrink:0;">
+        <div style="width:54px;height:54px;border-radius:15px;background:rgba(255,255,255,.18);border:2px solid rgba(255,255,255,.28);display:flex;align-items:center;justify-content:center;font-size:24px;">👨‍🔧</div>
+        <div style="flex:1;">
+          <div style="font-size:16px;font-weight:800;color:white;">Hamid Abdullayev</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.55);">+998 90 765 43 21</div>
+          <div style="display:flex;align-items:center;gap:5px;margin-top:4px;">
+            <span class="star">★★★★★</span><span style="font-size:11px;font-weight:700;color:white;">4.9</span>
+            <span style="font-size:9px;padding:2px 7px;background:rgba(0,169,79,.2);border:1px solid rgba(0,169,79,.4);border-radius:10px;color:#00A94F;font-weight:700;">✓ One ID</span>
+          </div>
+        </div>
+      </div>
+      <div class="scr" style="padding:0 16px 80px;">
+        <!-- mashina -->
+        <div class="g" style="padding:14px;margin-bottom:10px;">
+          <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:.05em;margin-bottom:10px;">MASHINA</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;justify-content:space-between;"><span style="font-size:11px;color:rgba(255,255,255,.55);">Davlat raqami</span><span style="font-size:13px;font-weight:700;color:white;">01 A 123 BC · UZ-01</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="font-size:11px;color:rgba(255,255,255,.55);">Sig'im</span><span style="font-size:13px;font-weight:700;color:white;">500 kg</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="font-size:11px;color:rgba(255,255,255,.55);">Tikilgan mahalla</span><span style="font-size:13px;font-weight:700;color:white;">Navro'z · Xo'jaeli</span></div>
+          </div>
+        </div>
+        <div class="mi"><div class="mi-ic">🟢</div><div class="mi-t">Smenani boshqarish</div><div class="mi-a">Faol ›</div></div>
+        <div class="mi"><div class="mi-ic">📄</div><div class="mi-t">Hujjatlar va hisobotlar</div><div class="mi-a">›</div></div>
+        <div class="mi"><div class="mi-ic">📊</div><div class="mi-t">Statistika</div><div class="mi-a">›</div></div>
+        <div class="mi"><div class="mi-ic">📞</div><div class="mi-t">Dispetcher bilan bog'lanish</div><div class="mi-a">›</div></div>
+        <div class="mi" style="border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.1);" onclick="sosAlert()">
+          <div class="mi-ic" style="background:rgba(239,68,68,.2);">🆘</div>
+          <div class="mi-t" style="color:#f87171;">SOS — favqulodda yordam</div>
+          <div class="mi-a" style="color:#f87171;">yuborish ›</div>
+        </div>
+        <div class="mi"><div class="mi-ic">⚙️</div><div class="mi-t">Sozlamalar</div><div class="mi-a">›</div></div>
+        <div class="mi" style="border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.08);" onclick="goD('d-home')">
+          <div class="mi-ic" style="background:rgba(239,68,68,.18);">🚪</div>
+          <div class="mi-t" style="color:#f87171;">Smenani tugatish</div>
+        </div>
+      </div>
+      <div class="nav">
+        <div class="ni" onclick="goD('d-home')"><div class="ni-i">🗺️</div><div class="ni-l">Marshrut</div></div>
+        <div class="ni" onclick="goD('d-list')"><div class="ni-i">📋</div><div class="ni-l">Ro'yxat</div></div>
+        <div class="ni" onclick="goD('d-stats')"><div class="ni-i">📊</div><div class="ni-l">Statistika</div></div>
+        <div class="ni on"><div class="ni-i">👤</div><div class="ni-l">Profil</div></div>
+      </div>
+    </div>
+  </div><!-- /dPhone -->
+</div>
+
+</div><!-- /wrap -->
+
+<!-- DEMO PANEL -->
+<div class="demo-panel">
+  <div class="dp-row">
+    <div style="font-size:10px;font-weight:700;color:#9b8ac4;padding:0 4px;">👤 Mijoz:</div>
+    <button class="dp-btn on" onclick="setU('u-login',this)">Kirish</button>
+    <button class="dp-btn" onclick="setU('u-oneid',this)">🇺🇿 One ID</button>
+    <button class="dp-btn" onclick="setU('u-otp',this)">📱 SMS</button>
+    <button class="dp-btn" onclick="setU('u-home',this)">🗺️ Xarita</button>
+    <button class="dp-btn" onclick="setU('u-qr',this)">📲 QR-kod</button>
+    <button class="dp-btn" onclick="setU('u-card',this)">💳 Karta</button>
+    <button class="dp-btn" onclick="setU('u-history',this)">📋 Tarix</button>
+    <button class="dp-btn" onclick="setU('u-notif',this)">🔔 Xabar</button>
+    <button class="dp-btn" onclick="setU('u-menu',this)">☰ Menyu</button>
+  </div>
+  <div class="dp-row" style="border-top:1px solid #efeaf8;padding-top:5px;">
+    <div style="font-size:10px;font-weight:700;color:#9b8ac4;padding:0 4px;">🚛 Haydovchi:</div>
+    <button class="dp-btn on" data-d onclick="setD('d-home',this)">🗺️ Marshrut</button>
+    <button class="dp-btn" data-d onclick="setD('d-nav',this)">🧭 Navigatsiya</button>
+    <button class="dp-btn" data-d onclick="setD('d-scan',this)">📷 Skaner</button>
+    <button class="dp-btn" data-d onclick="setD('d-list',this)">📋 Ro'yxat</button>
+    <button class="dp-btn" data-d onclick="setD('d-stats',this)">📊 Statistika</button>
+    <button class="dp-btn" data-d onclick="setD('d-profile',this)">👤 Profil</button>
+    <button class="dp-btn" onclick="toggleOffline(this)" style="color:#c2553a;">📴 Offline</button>
+  </div>
+</div>
+
+<script>
+function goU(id){
+  document.getElementById('uPhone').querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  const t=document.getElementById(id);
+  if(t) t.classList.add('active');
+}
+function showToast(){
+  const t=document.getElementById('ut');
+  t.style.display='flex';
+  setTimeout(()=>t.style.display='none',3200);
+}
+function markDone(btn){
+  btn.innerHTML='✅ Bajarildi!';
+  btn.style.background='rgba(34,197,94,.3)';
+  btn.style.borderColor='rgba(34,197,94,.6)';
+  btn.disabled=true;
+}
+function goD(id){
+  document.getElementById('dPhone').querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  const t=document.getElementById(id);
+  if(t) t.classList.add('active');
+  syncDemo('d',id);
+}
+function setU(id,btn){
+  document.querySelectorAll('.dp-btn:not([data-d])').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  goU(id);
+}
+function setD(id,btn){
+  document.querySelectorAll('.dp-btn[data-d]').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  goD(id);
+}
+// demo tugmalarini joriy ekran bilan moslash
+function syncDemo(prefix,id){
+  const sel=prefix==='d'?'.dp-btn[data-d]':'.dp-btn:not([data-d])';
+  document.querySelectorAll(sel).forEach(b=>{
+    const on=(b.getAttribute('onclick')||'').includes("'"+id+"'");
+    b.classList.toggle('on',on);
+  });
+}
+// goU ham demo paneli bilan moslashsin
+const _goU=goU;
+goU=function(id){_goU(id);syncDemo('u',id);};
+
+// Navigatsiya ekranida ETA jonli kamayadi (demo)
+setInterval(()=>{
+  const nav=document.getElementById('d-nav');
+  if(!nav||!nav.classList.contains('active'))return;
+  const dEl=document.getElementById('d-eta-dist'), mEl=document.getElementById('d-eta-min');
+  if(!dEl)return;
+  let d=parseInt(dEl.textContent,10);
+  d-=20; if(d<40){d=200;} // demo uchun aylanma
+  dEl.textContent=d;
+  if(mEl) mEl.textContent=Math.max(1,Math.round(d/55));
+},900);
+// auto type
+setTimeout(()=>{
+  const i=document.getElementById('u-phone-inp');
+  if(!i)return;
+  let n=0;const t='+998 90 123 45 67';
+  const iv=setInterval(()=>{i.value=t.slice(0,++n);if(n>=t.length)clearInterval(iv);},65);
+},700);
+setTimeout(()=>{
+  const i=document.getElementById('oneid-login');
+  if(!i)return;
+  let n=0;const t='30507199800018';
+  const iv=setInterval(()=>{i.value=t.slice(0,++n);if(n>=t.length)clearInterval(iv);},55);
+},900);
+
+/* ═══════════ V4 LOGIKA ═══════════ */
+const SVGNS='http://www.w3.org/2000/svg';
+
+// — QR generator (haqiqiy ko'rinishli matritsa) —
+function drawQR(id){
+  const svg=document.getElementById(id); if(!svg)return;
+  svg.innerHTML='';
+  const bg=document.createElementNS(SVGNS,'rect');
+  bg.setAttribute('x',0);bg.setAttribute('y',0);bg.setAttribute('width',29);bg.setAttribute('height',29);
+  bg.setAttribute('rx',1.5);bg.setAttribute('fill','#fff');svg.appendChild(bg);
+  function r(x,y,w,h){const e=document.createElementNS(SVGNS,'rect');e.setAttribute('x',x);e.setAttribute('y',y);e.setAttribute('width',w);e.setAttribute('height',h);e.setAttribute('class','q');svg.appendChild(e);}
+  function finder(x,y){r(x,y,7,1);r(x,y+6,7,1);r(x,y,1,7);r(x+6,y,1,7);r(x+2,y+2,3,3);}
+  const O=2,N=25; // quiet zone 2, 25 modul
+  finder(O,O);finder(O+N-7,O);finder(O,O+N-7);
+  // timing
+  for(let i=8;i<N-8;i++){if(i%2===0){r(O+i,O+6,1,1);r(O+6,O+i,1,1);}}
+  // seeded random data
+  let s=1234567;function rnd(){s^=s<<13;s^=s>>>17;s^=s<<5;return((s>>>0)%1000)/1000;}
+  function inFinder(cx,cy){return (cx<8&&cy<8)||(cx>N-9&&cy<8)||(cx<8&&cy>N-9);}
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+    if(inFinder(x,y))continue;
+    if(x===6||y===6)continue;
+    if(rnd()<0.46)r(O+x,O+y,1,1);
+  }
+}
+
+// — Mijoz zaxira OTP (jonli) —
+function genOTP(){let s='';for(let i=0;i<6;i++)s+=Math.floor(Math.random()*10);return s;}
+let uOtp='371904',uOtpSec=60;
+function renderUOtp(){
+  const c=document.getElementById('u-otp-digits');if(!c)return;
+  c.innerHTML='';uOtp.split('').forEach(d=>{const e=document.createElement('div');e.className='otp-d';e.textContent=d;c.appendChild(e);});
+}
+setInterval(()=>{
+  uOtpSec--;if(uOtpSec<=0){uOtpSec=60;uOtp=genOTP();renderUOtp();}
+  const n=document.getElementById('u-otp-count');if(n)n.textContent=uOtpSec;
+},1000);
+
+// — QR / Karta toggle (mijoz) —
+function qrTab(v){
+  document.getElementById('qr-tab-phone').classList.toggle('on',v==='phone');
+  document.getElementById('qr-tab-card').classList.toggle('on',v==='card');
+  document.getElementById('qr-view-phone').style.display=v==='phone'?'flex':'none';
+  document.getElementById('qr-view-card').style.display=v==='card'?'flex':'none';
+}
+
+// — Skaner / OTP toggle (haydovchi) —
+function scTab(v){
+  document.getElementById('sc-tab-qr').classList.toggle('on',v==='qr');
+  document.getElementById('sc-tab-otp').classList.toggle('on',v==='otp');
+  document.getElementById('sc-view-qr').style.display=v==='qr'?'block':'none';
+  document.getElementById('sc-view-otp').style.display=v==='otp'?'block':'none';
+}
+
+// — Haydovchi OTP klaviaturasi —
+let scOtp='';
+function renderScOtp(){
+  document.querySelectorAll('#d-scan .otp-input-box').forEach((b,i)=>{b.textContent=scOtp[i]||'';b.classList.toggle('fill',!!scOtp[i]);});
+}
+function otpKey(k){
+  if(k==='clear')scOtp='';
+  else if(k==='back')scOtp=scOtp.slice(0,-1);
+  else if(scOtp.length<6)scOtp+=k;
+  renderScOtp();
+}
+
+// — To'lov usuli —
+let payCash=false;
+function payMode(m){
+  payCash=(m==='cash');
+  document.getElementById('pay-card').classList.toggle('on',!payCash);
+  document.getElementById('pay-cash').classList.toggle('on',payCash);
+  document.getElementById('pay-note-card').style.display=payCash?'none':'block';
+  document.getElementById('pay-note-cash').style.display=payCash?'block':'none';
+}
+
+// — Donabay balans + offline —
+let dBal=87, offlineMode=false, cacheCount=0;
+const RING_C=138;
+function updateBal(){
+  const num=document.getElementById('d-bal-num'),txt=document.getElementById('d-bal-txt'),ring=document.getElementById('d-bal-ring');
+  if(num)num.textContent=dBal;if(txt)txt.textContent=dBal;
+  if(ring)ring.setAttribute('stroke-dashoffset',(RING_C*(1-dBal/100)).toFixed(1));
+}
+function toggleOffline(btn){
+  offlineMode=!offlineMode;
+  btn.classList.toggle('on',offlineMode);
+  const off=document.getElementById('d-offline'),on=document.getElementById('d-online');
+  if(off)off.style.display=offlineMode?'inline-flex':'none';
+  if(on)on.style.display=offlineMode?'none':'inline-flex';
+}
+
+// — Topshirishni tasdiqlash —
+function confirmDelivery(){
+  if(dBal>0)dBal--;
+  updateBal();
+  scOtp='';renderScOtp();payMode('card');scTab('qr');
+  goD('d-home');
+  let msg=payCash?'Naqd qabul qilindi · 1 balon topshirildi':'Balansdan yechildi · 1 balon topshirildi';
+  if(offlineMode){cacheCount++;const c=document.getElementById('d-cache');if(c)c.textContent=cacheCount;msg='📴 Keshga yozildi · internet kelganda sinxron';}
+  flashToast('dPhone',msg,'34,197,94');
+}
+
+// — SOS —
+function sosAlert(){flashToast('dPhone','🆘 SOS yuborildi — dispetcher xabardor qilindi','239,68,68');}
+
+// — To'ldirish (mijoz) —
+function topupToast(brand){flashToast('uPhone',brand+' orqali +1 balon to\'ldirildi',brand==='Payme'?'19,169,192':brand==='Uzum'?'139,92,246':'26,143,255');}
+
+// — Umumiy toast (aktiv ekranga) —
+function flashToast(phoneId,msg,rgb){
+  const ph=document.getElementById(phoneId);if(!ph)return;
+  const active=ph.querySelector('.screen.active');if(!active)return;
+  active.querySelectorAll('.toast.flash').forEach(t=>t.remove());
+  const t=document.createElement('div');
+  t.className='toast flash';
+  t.style.background='rgba('+rgb+',.16)';
+  t.style.borderColor='rgba('+rgb+',.45)';
+  t.innerHTML='<span style="color:rgb('+rgb+');">✅</span><span style="color:rgb('+rgb+');">'+msg+'</span>';
+  active.appendChild(t);
+  setTimeout(()=>t.remove(),3000);
+}
+
+// — Init —
+drawQR('uQrCode');
+renderUOtp();
+updateBal();
+</script>
+
+<!-- ══════════ GazTracker v4 · 1-BOSQICH: JONLI GPS KUZATUV ══════════ -->
+<script>
+(function () {
+  // ⚠️ Bu manzilni o'z Node.js serveringiz manzili bilan almashtiring (HTTPS shart):
+  const SERVER_URL = "https://gaztracker-server.onrender.com";
+
+  // Boshlang'ich markaz (Xo'jaeli atrofi). Jonli koordinata kelganda yangilanadi.
+  const DEFAULT_CENTER = [42.3980, 59.4530];
+  const DEST = [42.4015, 59.4602]; // "Siz" (mijoz manzili) — demo uchun statik
+
+  let map = null, truckMarker = null, animTimer = null;
+
+  /* ── Telegram WebApp: ism va to'liq ekran ── */
+  function initTelegram() {
+    const tg = window.Telegram && window.Telegram.WebApp;
+    if (!tg) return;            // brauzerda ochilsa — o'tkazib yuboramiz
+    tg.ready();
+    tg.expand();                // ilovani to'liq balandlikka yoyamiz
+    const u = tg.initDataUnsafe && tg.initDataUnsafe.user;
+    if (!u) return;
+    const fullName = [u.first_name, u.last_name].filter(Boolean).join(" ");
+    const greet = document.getElementById("u-userName");
+    const prof  = document.getElementById("u-userNameProfile");
+    if (greet) greet.textContent = fullName + " 👋"; // OneID profili o'rniga
+    if (prof)  prof.textContent  = fullName;
+  }
+
+  /* ── Yuk mashinasi belgisi (glassmorphism uslubidagi divIcon) ── */
+  const truckIcon = L.divIcon({
+    className: "",
+    html: '<div style="width:34px;height:34px;border-radius:50%;background:#6644ee;'
+        + 'border:2px solid #fff;box-shadow:0 4px 14px rgba(102,68,238,.55);'
+        + 'display:flex;align-items:center;justify-content:center;font-size:16px;">🚛</div>',
+    iconSize: [34, 34],
+    iconAnchor: [17, 17]
+  });
+  const destIcon = L.divIcon({
+    className: "",
+    html: '<div style="width:22px;height:22px;border-radius:50%;background:#FF5722;'
+        + 'border:2px solid #fff;box-shadow:0 3px 10px rgba(255,87,34,.55);"></div>',
+    iconSize: [22, 22],
+    iconAnchor: [11, 11]
+  });
+
+  /* ── Leaflet xaritasini yaratish ── */
+  function initMap() {
+    const el = document.getElementById("liveMap");
+    if (!el || map) return;
+    map = L.map(el, { zoomControl: false, attributionControl: false }).setView(DEFAULT_CENTER, 15);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19
+    }).addTo(map);
+    L.marker(DEST, { icon: destIcon }).addTo(map).bindPopup("Siz (manzil)");
+    truckMarker = L.marker(DEFAULT_CENTER, { icon: truckIcon }).addTo(map).bindPopup("Yuk mashinasi");
+    window._gazMap = map; // ekran almashganda invalidateSize uchun
+  }
+
+  /* ── ASOSIY FUNKSIYA: serverdan kelgan koordinatani silliq harakatlantirish ──
+     Marker eski nuqtadan yangi nuqtaga ~1 soniyada animatsiya bilan suriladi. */
+  window.updateDriverLocation = function (lat, lng) {
+    if (!map || !truckMarker) return;
+    const from = truckMarker.getLatLng();
+    const to = L.latLng(lat, lng);
+    const duration = 1000;            // ms
+    const startTs = performance.now();
+    if (animTimer) cancelAnimationFrame(animTimer);
+
+    function easeInOut(t) { return t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t; }
+    function step(now) {
+      const p = Math.min((now - startTs) / duration, 1);
+      const e = easeInOut(p);
+      truckMarker.setLatLng([
+        from.lat + (to.lat - from.lat) * e,
+        from.lng + (to.lng - from.lng) * e
+      ]);
+      if (p < 1) animTimer = requestAnimationFrame(step);
+      else map.panTo(to, { animate: true, duration: 0.6 }); // kamera mashina ortidan
+    }
+    animTimer = requestAnimationFrame(step);
+  };
+
+  /* ── Socket.io: serverga ulanish va koordinatalarni qabul qilish ── */
+  function initSocket() {
+    if (typeof io === "undefined") return;
+    const socket = io(SERVER_URL, { transports: ["websocket"] });
+    socket.on("connect", () => console.log("[GazTracker] serverga ulandi"));
+    // Server broadcast qiladigan hodisa nomi: "driverLocation"
+    socket.on("driverLocation", (data) => {
+      if (data && typeof data.lat === "number" && typeof data.lng === "number") {
+        updateDriverLocation(data.lat, data.lng);
+      }
+    });
+    socket.on("disconnect", () => console.log("[GazTracker] ulanish uzildi"));
+  }
+
+  /* ── Ishga tushirish ── */
+  document.addEventListener("DOMContentLoaded", function () {
+    initTelegram();
+    initMap();
+    initSocket();
+  });
+
+  /* Ekran yashirin (display:none) holatda yaratilgani uchun, u-home ochilganda
+     Leaflet o'lchamini qayta hisoblaymiz. Mavjud goU funksiyasini o'rab olamiz. */
+  const _origGoU = window.goU;
+  window.goU = function (id) {
+    if (typeof _origGoU === "function") _origGoU(id);
+    if (id === "u-home" && window._gazMap) {
+      setTimeout(() => window._gazMap.invalidateSize(), 120);
+    }
+  };
+})();
+</script>
+
+</body>
+</html>
